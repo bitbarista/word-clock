@@ -228,10 +228,6 @@ module shell() {
         // open the lip + relieve the lid rim where the USB-C passes
         translate([usb_side * (face_w/2 - 3.2), face_w/2 - usb_up, 7.2])
             cube([7.8, 16, 12], center = true);
-        // optional dedicated-5V cable exit (device bottom, hidden
-        // behind the stand horn)
-        translate([30, face_w/2 - usb_up, -eps]) linear_extrude(lid_t + 2)
-            hull() for (x = [-2.5, 2.5]) translate([x, 0]) circle(d = 7);
     }
 }
 

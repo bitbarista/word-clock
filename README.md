@@ -38,10 +38,11 @@ current then flows through the supermini's VBUS diode, so firmware
 must cap global brightness (~30 %) and attract-mode/full-face
 animations especially.
 
-If you'd rather run brighter, wire the PSU 5 V/GND directly to the
-panel pigtail and the ESP32 5 V pin through the oval exit in the shell
-(bottom, hidden behind the stand horn) — then USB-C is programming
-only. Data from a GPIO to DIN, short lead, either way.
+If you ever want to run brighter, wire the PSU 5 V/GND directly to
+the panel pigtail and the ESP32 5 V pin — the back panel is clean by
+design, so add a cable exit in `shell()` first (or use a right-angle
+USB-C lead and a beefier supply, accepting the diode limit). Data from
+a GPIO to DIN, short lead, either way.
 
 ## Printed parts
 
