@@ -85,9 +85,10 @@ eps = 0.01;
 // THREE+EIGHT, SEVENINE = SEVEN+NINE, PASTO = PAST+TO, and
 // MINUTE is a prefix of MINUTES.  Rows 0-8 = minutes, 9-12 =
 // hours + OCLOCK, 13-15 = arcade hall of fame.  Hidden words:
-// HIGH SCORE, INSERT COIN, ZAP, PAC, WAKA, GO, GAME/OVER
+// HIGH SCORE, INSERT COIN, ZAP/PAC/POW (stacked), GO, GAME/OVER
 // (stacked), SPACE INVADERS, PEW, GALAGA, DONKEY KONG,
-// THE MATRIX, QBERT, UP.
+// THE MATRIX, QBERT, UP.  The X in row 8 is a deliberate spacer
+// so the ever-lit MINUTES PAST reads as two words.
 // ----------------------------------------------------------------
 GRID = [
     "ITKISAHIGHSCOREZ",
@@ -98,7 +99,7 @@ GRID = [
     "THIRTEENQUARTERS",
     "THREELEVENTENZAP",
     "TWONEFIVEHALFPAC",
-    "MINUTESPASTOWAKA",
+    "MINUTESXPASTOPOW",
     "TWONETHREEIGHTGO",
     "SEVENINEFOURFIVE",
     "SIXTENELEVENGAME",

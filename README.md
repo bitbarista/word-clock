@@ -85,11 +85,11 @@ TWENTY INSERTCOIN             rows 9-12: hour words + OCLOCK
 FOURTEEN SIXTEEN A            rows 13-15: arcade hall of fame
 SEVENTEEN TWELVE B
 EIGHTEEN NINETEEN             hidden arcade words:
-THIRTEEN QUARTER S            HIGH SCORE, INSERT COIN, ZAP,
-THREELEVEN TEN ZAP            PAC, WAKA, GO, GAME/OVER
-TWONE FIVE HALF PAC           (stacked), SPACE INVADERS, PEW,
-MINUTES PASTO WAKA            GALAGA, DONKEY KONG,
-TWONE THREEIGHT GO            THE MATRIX, QBERT, UP
+THIRTEEN QUARTER S            HIGH SCORE, INSERT COIN,
+THREELEVEN TEN ZAP            ZAP/PAC/POW (stacked), GO,
+TWONE FIVE HALF PAC           GAME/OVER (stacked),
+MINUTES X PASTO POW           SPACE INVADERS, PEW, GALAGA,
+TWONE THREEIGHT GO            DONKEY KONG, THE MATRIX, QBERT, UP
 SEVENINE FOUR FIVE
 SIX TEN ELEVEN GAME
 TWELVE OCLOCK OVER
@@ -104,7 +104,9 @@ NINE as prefixes; TWONE = TWO+ONE, THREELEVEN = THREE+ELEVEN,
 THREEIGHT = THREE+EIGHT, SEVENINE = SEVEN+NINE, PASTO = PAST+TO, and
 MINUTE is a prefix of MINUTES. Grammar: `ONE MINUTE`, `A QUARTER` /
 `HALF` (no MINUTES), 21–29 = TWENTY + unit, and past 30 minutes it
-counts down TO the next hour. The stand's front lip is deliberately
+counts down TO the next hour. The X in row 8 is a deliberate spacer:
+MINUTES PAST is lit 48 minutes of every hour, so it earns a gap
+(TWELVE OCLOCK stays adjacent — it shows for one minute twice a day). The stand's front lip is deliberately
 low (13 mm) so the bottom hall-of-fame row stays visible above it.
 
 Since words now change every minute, firmware should run the big
