@@ -1,7 +1,8 @@
 # TIME INVADERS — arcade word clock
 
 A 16×16 word clock with an 8-bit arcade heart: the time reads as words
-(`IT IS TWENTY FIVE PAST TEN`), but time changes are game events —
+to the exact minute (`IT IS TWENTY THREE MINUTES PAST FOUR`), but time
+changes are game events —
 Pac-Man eats the old time, Matrix rain resolves into the new one — and
 the filler letters hide arcade words (INSERT COIN, GAME OVER, HIGH
 SCORE, PLAYER ONE, plus a bottom-rows hall of fame ending in THE
@@ -76,30 +77,40 @@ The font is a purpose-made 5×7 pixel stencil face (`font.scad`):
 letters with enclosed counters (A B D O P Q R) carry a bridge, so no
 first-layer island of plate material sits loose on the bed.
 
-## The letter grid
+## The letter grid (per-minute)
 
 ```
-A IT K IS HIGHSCORE S        time words     hidden arcade words
-INSERTCOIN READY B           ─────────      ──────────────────
-A TWENTY FIVE PLAY C         IT IS          HIGH SCORE, READY
-QUARTER BONUS HALF           TWENTY FIVE    INSERT COIN, PLAY
-TEN D GAMEOVER PAST          QUARTER HALF   BONUS, GAME OVER
-TO F LEVELUP CREDIT          TEN PAST TO    LEVEL UP, CREDIT
-ONE TWO THREE GHOST          ONE..TWELVE    GHOST, STAR, WAKA
-FOUR FIVE SIX SEVEN          OCLOCK         PACMAN, HUNT, CHERRY
-EIGHT NINE TEN STAR                         PLAYER ONE
-ELEVEN TWELVE WAKA                          SPACE INVADERS, PEW
-OCLOCK PACMAN HUNT                          GALAGA, DONKEY KONG
-PLAYERONE CHERRY Z                          ASTEROIDS, FROGGER
-SPACEINVADERS PEW                           THE MATRIX, QBERT, UP
+IT K IS A HIGHSCORE Z         rows 0-8: minute words
+TWENTY INSERTCOIN             rows 9-12: hour words + OCLOCK
+FOURTEEN SIXTEEN A            rows 13-15: arcade hall of fame
+SEVENTEEN TWELVE B
+EIGHTEEN NINETEEN             hidden arcade words:
+THIRTEEN QUARTER S            HIGH SCORE, INSERT COIN, ZAP,
+THREELEVEN TEN ZAP            PAC, WAKA, GO, GAME/OVER
+TWONE FIVE HALF PAC           (stacked), SPACE INVADERS, PEW,
+MINUTES PASTO WAKA            GALAGA, DONKEY KONG,
+TWONE THREEIGHT GO            THE MATRIX, QBERT, UP
+SEVENINE FOUR FIVE
+SIX TEN ELEVEN GAME
+TWELVE OCLOCK OVER
+SPACEINVADERS PEW
 GALAGA DONKEYKONG
-ASTEROIDS FROGGER
 THEMATRIX QBERT UP
 ```
 
-Time resolves to 5 minutes; the four corner LEDs add +1..+4 minutes
-(QLOCKTWO style). The stand's front lip is deliberately low (13 mm) so
-the bottom hall-of-fame row stays visible above it.
+Per-minute wording fits 16×16 through letter-sharing: FOURTEEN,
+SIXTEEN, SEVENTEEN, EIGHTEEN, NINETEEN carry FOUR, SIX, SEVEN, EIGHT,
+NINE as prefixes; TWONE = TWO+ONE, THREELEVEN = THREE+ELEVEN,
+THREEIGHT = THREE+EIGHT, SEVENINE = SEVEN+NINE, PASTO = PAST+TO, and
+MINUTE is a prefix of MINUTES. Grammar: `ONE MINUTE`, `A QUARTER` /
+`HALF` (no MINUTES), 21–29 = TWENTY + unit, and past 30 minutes it
+counts down TO the next hour. The stand's front lip is deliberately
+low (13 mm) so the bottom hall-of-fame row stays visible above it.
+
+Since words now change every minute, firmware should run the big
+game transitions on 5-minute boundaries (configurable) and a quick
+crossfade on ordinary minute ticks — Pac-Man every 60 s would wear
+thin fast.
 
 ## Enclosure stack (front → back)
 

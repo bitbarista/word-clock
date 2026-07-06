@@ -77,29 +77,34 @@ $fa = 4; $fs = 0.4;
 eps = 0.01;
 
 // ----------------------------------------------------------------
-// The letter grid, as read from the front.
-// Time words:  IT IS | TWENTY FIVE / QUARTER / HALF / TEN | PAST TO
-//              ONE..TWELVE | OCLOCK      (5-minute resolution;
-//              corner LEDs add +1..+4 minutes)
-// Everything else is deliberate arcade filler: INSERT COIN,
-// GAME OVER, HIGH SCORE, PLAYER ONE + a bottom-rows hall of fame.
+// The letter grid, as read from the front. PER-MINUTE resolution:
+//   IT IS TWENTY THREE MINUTES PAST FOUR
+// Letter-sharing keeps it compact: FOURTEEN/SIXTEEN/SEVENTEEN/
+// EIGHTEEN/NINETEEN carry FOUR/SIX/SEVEN/EIGHT/NINE as prefixes,
+// THREELEVEN = THREE+ELEVEN, TWONE = TWO+ONE, THREEIGHT =
+// THREE+EIGHT, SEVENINE = SEVEN+NINE, PASTO = PAST+TO, and
+// MINUTE is a prefix of MINUTES.  Rows 0-8 = minutes, 9-12 =
+// hours + OCLOCK, 13-15 = arcade hall of fame.  Hidden words:
+// HIGH SCORE, INSERT COIN, ZAP, PAC, WAKA, GO, GAME/OVER
+// (stacked), SPACE INVADERS, PEW, GALAGA, DONKEY KONG,
+// THE MATRIX, QBERT, UP.
 // ----------------------------------------------------------------
 GRID = [
-    "AITKISHIGHSCORES",
-    "INSERTCOINREADYB",
-    "ATWENTYFIVEPLAYC",
-    "QUARTERBONUSHALF",
-    "TENDGAMEOVERPAST",
-    "TOFLEVELUPCREDIT",
-    "ONETWOTHREEGHOST",
-    "FOURFIVESIXSEVEN",
-    "EIGHTNINETENSTAR",
-    "ELEVENTWELVEWAKA",
-    "OCLOCKPACMANHUNT",
-    "PLAYERONECHERRYZ",
+    "ITKISAHIGHSCOREZ",
+    "TWENTYINSERTCOIN",
+    "FOURTEENSIXTEENA",
+    "SEVENTEENTWELVEB",
+    "EIGHTEENNINETEEN",
+    "THIRTEENQUARTERS",
+    "THREELEVENTENZAP",
+    "TWONEFIVEHALFPAC",
+    "MINUTESPASTOWAKA",
+    "TWONETHREEIGHTGO",
+    "SEVENINEFOURFIVE",
+    "SIXTENELEVENGAME",
+    "TWELVEOCLOCKOVER",
     "SPACEINVADERSPEW",
     "GALAGADONKEYKONG",
-    "ASTEROIDSFROGGER",
     "THEMATRIXQBERTUP"
 ];
 assert(len(GRID) == cells, "GRID row count != cells");
