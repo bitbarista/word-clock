@@ -1,0 +1,257 @@
+// =================================================================
+// TIME INVADERS — 16x16 word clock, subtle desk-wedge enclosure
+// -----------------------------------------------------------------
+// Shell concept "B — Subtle": plain slab in a raked desk stand.
+// Face prints LETTERS-DOWN with two filament swaps:
+//     0.0 – 1.0 mm  dark   (letter stencil layer)
+//     1.0 – 1.6 mm  white  (diffuser the LEDs glow through)
+//     1.6 mm – end  dark   (baffle lattice + tray body)
+// Electronics: 16x16 WS2812B flexible panel (160x160, 10 mm pitch)
+// + ESP32-S3 supermini.  See README.md for the print/assembly guide.
+// =================================================================
+
+VERSION = "0.1.0";
+echo(str("word clock model v", VERSION));
+
+include <font.scad>
+
+/* [Part] */
+part = "assembly"; // [assembly, faceplate, shell, stand, coupon, face2d]
+
+/* [LED panel] */
+// LED-to-LED spacing of the matrix panel
+pitch = 10;
+// LEDs per side
+cells = 16;
+// panel PCB thickness
+panel_t = 2.0;
+// compressible foam behind the panel
+foam_t = 3.0;
+
+/* [Face plate] */
+// dark stencil layer in front of the diffuser (print: swap to white here)
+t_front = 1.0;
+// white diffuser layer (print: swap back to dark after this)
+t_diff = 0.6;
+// depth of the per-cell baffle lattice behind the diffuser
+baffle_d = 12;
+// baffle wall thickness (lands between LEDs)
+lat_wall = 1.2;
+// bezel width beyond the LED grid
+bezel = 12;
+// letter pixel size (letter = 5 x 7 pixels)
+font_px = 1.1;
+// face corner radius
+corner_r = 3;
+
+/* [Body] */
+// tray perimeter wall thickness
+wall_t = 2.4;
+// rear shell lid thickness
+lid_t = 2.4;
+// shell lip engagement depth
+lip_h = 4;
+// M3 self-tap pilot in the corner posts
+post_hole_d = 2.7;
+
+/* [Stand] */
+// backwards rake of the face
+tilt = 12; // [5:25]
+stand_w = 120;
+stand_depth = 92;
+stand_h = 34;
+// slot clearance around the slab
+groove_clr = 0.8;
+
+/* [Hidden] */
+$fa = 4; $fs = 0.4;
+eps = 0.01;
+
+// ----------------------------------------------------------------
+// The letter grid, as read from the front.
+// Time words:  IT IS | TWENTY FIVE / QUARTER / HALF / TEN | PAST TO
+//              ONE..TWELVE | OCLOCK      (5-minute resolution;
+//              corner LEDs add +1..+4 minutes)
+// Everything else is deliberate arcade filler: INSERT COIN,
+// GAME OVER, HIGH SCORE, PLAYER ONE + a bottom-rows hall of fame.
+// ----------------------------------------------------------------
+GRID = [
+    "AITKISHIGHSCORES",
+    "INSERTCOINREADYB",
+    "ATWENTYFIVEPLAYC",
+    "QUARTERBONUSHALF",
+    "TENDGAMEOVERPAST",
+    "TOFLEVELUPCREDIT",
+    "ONETWOTHREEGHOST",
+    "FOURFIVESIXSEVEN",
+    "EIGHTNINETENSTAR",
+    "ELEVENTWELVEWAKA",
+    "OCLOCKPACMANHUNT",
+    "PLAYERONECHERRYZ",
+    "SPACEINVADERSPEW",
+    "GALAGADONKEYKONG",
+    "ASTEROIDSFROGGER",
+    "THEMATRIXQBERTUP"
+];
+assert(len(GRID) == cells, "GRID row count != cells");
+for (r = [0:len(GRID)-1])
+    assert(len(GRID[r]) == cells, str("GRID row ", r, " is not ", cells, " chars"));
+
+// 4x4 sample for a cheap test print (colour change + legibility)
+COUPON = [
+    "TIME",
+    "GAME",
+    "OVER",
+    "WORD"
+];
+
+// derived
+t_face   = t_front + t_diff;                  // solid face thickness
+face_w   = cells * pitch + 2 * bezel;         // 184
+wall_top = t_face + baffle_d + panel_t + foam_t + 0.4;  // 19.0
+slab_t   = wall_top + lid_t;                  // total device thickness
+post_off = face_w/2 - 8.5;                    // corner post centres
+lip_out  = face_w/2 - wall_t - 0.4;           // shell lip outer half-width
+groove_w = slab_t + groove_clr;
+
+// ----------------------------------------------------------------
+// helpers
+// ----------------------------------------------------------------
+module rsq(w, r = corner_r) offset(r) offset(-r) square(w - 2*r, center = true);
+
+// Letter voids for an n x n grid, MIRRORED so the text reads
+// correctly from the front when the plate prints letters-down
+// (model z=0 is the front face, on the bed).
+module letters2d(n, grid) {
+    mirror([1, 0, 0])
+        for (r = [0:n-1], c = [0:n-1])
+            translate([(c - (n-1)/2) * pitch, ((n-1)/2 - r) * pitch])
+                glyph2d(grid[r][c], px = font_px);
+}
+
+// ----------------------------------------------------------------
+// face plate: stencil + diffuser + baffle lattice (+ tray walls)
+// ----------------------------------------------------------------
+module face_core(n, grid, fw, tray = true) {
+    gs = n * pitch;      // LED grid span
+    op = gs + 1;         // panel opening (0.5 clearance/side)
+
+    // stencil layer (dark on the bed)
+    linear_extrude(t_front)
+        difference() { rsq(fw); letters2d(n, grid); }
+
+    // diffuser layer (white)
+    translate([0, 0, t_front]) linear_extrude(t_diff) rsq(fw);
+
+    // bezel ring + per-cell baffle lattice (dark again)
+    translate([0, 0, t_face]) linear_extrude(baffle_d) {
+        difference() { rsq(fw); square(op, center = true); }
+        for (k = [0:n]) {
+            translate([-gs/2 + k*pitch, 0]) square([lat_wall, op + 2], center = true);
+            translate([0, -gs/2 + k*pitch]) square([op + 2, lat_wall], center = true);
+        }
+    }
+
+    if (tray) {
+        // perimeter tray wall up to the shell seat
+        translate([0, 0, t_face]) linear_extrude(wall_top - t_face)
+            difference() { rsq(fw); rsq(fw - 2*wall_t, corner_r - 1); }
+        // corner screw posts
+        for (sx = [-1, 1], sy = [-1, 1])
+            translate([sx*post_off, sy*post_off, t_face])
+                difference() {
+                    cylinder(d = 7, h = wall_top - t_face);
+                    translate([0, 0, wall_top - t_face - 10])
+                        cylinder(d = post_hole_d, h = 10 + eps);
+                }
+    }
+}
+
+module faceplate() face_core(cells, GRID, face_w);
+module coupon()    face_core(4, COUPON, 4*pitch + 8, tray = false);
+
+// ----------------------------------------------------------------
+// rear shell: flat lid, inner lip, foam-pressure ribs,
+// ESP32 supermini pocket, cable exit
+// ----------------------------------------------------------------
+module shell() {
+    difference() {
+        union() {
+            linear_extrude(lid_t) rsq(face_w);
+            // lip that registers inside the tray wall
+            translate([0, 0, lid_t]) linear_extrude(lip_h)
+                difference() { rsq(2*lip_out, 2); rsq(2*lip_out - 3.6, 1.2); }
+            // ribs pressing the foam/panel against the baffle
+            translate([0, 0, lid_t]) {
+                for (x = [-40, 40]) translate([x, 0, 0])
+                    linear_extrude(1.0) square([1.6, cells*pitch], center = true);
+                for (y = [-40, 40]) translate([0, y, 0])
+                    linear_extrude(1.0) square([cells*pitch, 1.6], center = true);
+            }
+            // ESP32 supermini pocket (open toward centre for wiring)
+            translate([0, -62, lid_t]) linear_extrude(5)
+                difference() {
+                    square([28, 24], center = true);
+                    square([23.4, 18.6], center = true);
+                    translate([0, 12]) square([19, 10], center = true);
+                }
+        }
+        // corner screws: through-hole + counterbore in the outside face
+        for (sx = [-1, 1], sy = [-1, 1])
+            translate([sx*post_off, sy*post_off, -eps]) {
+                cylinder(d = 3.4, h = lid_t + lip_h + 1);
+                cylinder(d = 6.5, h = 1.4);
+            }
+        // cable exit (sits just above the stand when docked)
+        translate([30, -62, -eps]) linear_extrude(lid_t + 2)
+            hull() for (x = [-2.5, 2.5]) translate([x, 0]) circle(d = 7);
+    }
+}
+
+// ----------------------------------------------------------------
+// desk stand: raked slot in a wedge block
+// ----------------------------------------------------------------
+module stand() {
+    groove_y = 40;   // slot centre-line at the top face
+    difference() {
+        // low lip in front (must not cover the bottom letter row:
+        // lip 13 high ⇒ ~9 mm of slab hidden < 12 mm bezel), tall
+        // support horn behind where the slab leans on it
+        rotate([90, 0, 90]) linear_extrude(stand_w, center = true)
+            polygon([
+                [0, 0], [stand_depth, 0],
+                [stand_depth, 8], [66, stand_h],
+                [42, stand_h], [32, 13], [24, 13], [0, 5]
+            ]);
+        translate([0, groove_y, 4]) rotate([-tilt, 0, 0])
+            translate([-stand_w/2 - 5, -groove_w/2, 0])
+                cube([stand_w + 10, groove_w, 60]);
+    }
+}
+
+// ----------------------------------------------------------------
+// assembly view (form check only — F5 preview this)
+// ----------------------------------------------------------------
+module device() {
+    color("#20242c") faceplate();
+    color("#2a2f3a") translate([0, 0, slab_t]) rotate([180, 0, 0]) shell();
+}
+
+module assembly() {
+    color("#181b22") stand();
+    translate([0, 40 - groove_w/2 + groove_clr/2, 4.6])
+        rotate([-tilt, 0, 0]) translate([0, 0, face_w/2])
+            rotate([0, 0, 180]) rotate([90, 0, 0])
+                translate([0, 0, -0]) device();
+}
+
+// ----------------------------------------------------------------
+if (part == "faceplate") faceplate();
+if (part == "shell")     shell();
+if (part == "stand")     stand();
+if (part == "coupon")    coupon();
+if (part == "assembly")  assembly();
+if (part == "face2d")    // quick legibility check, reads correctly in top view
+    for (r = [0:cells-1], c = [0:cells-1])
+        translate([(c - (cells-1)/2) * pitch, ((cells-1)/2 - r) * pitch])
+            glyph2d(GRID[r][c], px = font_px);
