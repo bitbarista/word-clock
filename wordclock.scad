@@ -54,6 +54,15 @@ lip_h = 4;
 // M3 self-tap pilot in the corner posts
 post_hole_d = 2.7;
 
+/* [Electronics] */
+// side the USB-C exits, viewed from the FRONT (model x is mirrored)
+usb_side = -1; // [-1:right, 1:left]
+// height of the USB-C/pocket centre above the bottom face edge
+usb_up = 28;
+// ESP32 supermini board size incl. fitting tolerance
+esp_l = 22.8;
+esp_w = 18.4;
+
 /* [Stand] */
 // backwards rake of the face
 tilt = 12; // [5:25]
@@ -153,9 +162,15 @@ module face_core(n, grid, fw, tray = true) {
     }
 
     if (tray) {
-        // perimeter tray wall up to the shell seat
-        translate([0, 0, t_face]) linear_extrude(wall_top - t_face)
-            difference() { rsq(fw); rsq(fw - 2*wall_t, corner_r - 1); }
+        // perimeter tray wall up to the shell seat, notched so the
+        // ESP32's onboard USB-C protrudes through the side (open to
+        // the wall top: the connector drops in as the tray closes)
+        difference() {
+            translate([0, 0, t_face]) linear_extrude(wall_top - t_face)
+                difference() { rsq(fw); rsq(fw - 2*wall_t, corner_r - 1); }
+            translate([usb_side * fw/2, -fw/2 + usb_up, wall_top])
+                cube([2*wall_t + 4, 13, 13], center = true);
+        }
         // corner screw posts
         for (sx = [-1, 1], sy = [-1, 1])
             translate([sx*post_off, sy*post_off, t_face])
@@ -188,12 +203,20 @@ module shell() {
                 for (y = [-40, 40]) translate([0, y, 0])
                     linear_extrude(1.0) square([cells*pitch, 1.6], center = true);
             }
-            // ESP32 supermini pocket (open toward centre for wiring)
-            translate([0, -62, lid_t]) linear_extrude(5)
-                difference() {
-                    square([28, 24], center = true);
-                    square([23.4, 18.6], center = true);
-                    translate([0, 12]) square([19, 10], center = true);
+            // ESP32 supermini cradle in the bottom corner, USB-C edge
+            // against the side wall. NB the lid flips onto the tray,
+            // so shell y is MIRRORED vs the assembled device: device
+            // bottom = model +y, and model x = device x.
+            translate([usb_side * (face_w/2 - wall_t - 0.2 - esp_l/2),
+                       face_w/2 - usb_up, lid_t])
+                linear_extrude(5) {
+                    for (s = [-1, 1]) translate([0, s * (esp_w + 1.8)/2])
+                        square([esp_l, 1.8], center = true);
+                    translate([-usb_side * (esp_l + 1.8)/2, 0])
+                        difference() {
+                            square([1.8, esp_w + 3.6], center = true);
+                            square([2.6, 8], center = true); // wire gap
+                        }
                 }
         }
         // corner screws: through-hole + counterbore in the outside face
@@ -202,8 +225,12 @@ module shell() {
                 cylinder(d = 3.4, h = lid_t + lip_h + 1);
                 cylinder(d = 6.5, h = 1.4);
             }
-        // cable exit (sits just above the stand when docked)
-        translate([30, -62, -eps]) linear_extrude(lid_t + 2)
+        // open the lip + relieve the lid rim where the USB-C passes
+        translate([usb_side * (face_w/2 - 3.2), face_w/2 - usb_up, 7.2])
+            cube([7.8, 16, 12], center = true);
+        // optional dedicated-5V cable exit (device bottom, hidden
+        // behind the stand horn)
+        translate([30, face_w/2 - usb_up, -eps]) linear_extrude(lid_t + 2)
             hull() for (x = [-2.5, 2.5]) translate([x, 0]) circle(d = 7);
     }
 }

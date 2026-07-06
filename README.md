@@ -27,9 +27,21 @@ not started.**
 | 4× M3×8 self-tapping screws | shell → faceplate corner posts |
 | Level shifter (optional) | 3.3 V data usually drives WS2812B fine at 5 V; add 74AHCT125 if flaky |
 
-Wire 5 V/GND from the PSU directly to the panel pigtail AND to the
-ESP32 5 V pin (don't route panel current through the dev board). Data
-from a GPIO to DIN, short lead.
+### Power & access
+
+The ESP32 sits in a corner cradle with its **onboard USB-C protruding
+through the side wall** (right side viewed from the front; `usb_side`
+flips it) — so you can flash/update firmware without opening the case,
+and a single USB-C lead can power the clock for normal use: the word
+display lights ~20–30 LEDs and stays well under 1 A. Note the panel's
+current then flows through the supermini's VBUS diode, so firmware
+must cap global brightness (~30 %) and attract-mode/full-face
+animations especially.
+
+If you'd rather run brighter, wire the PSU 5 V/GND directly to the
+panel pigtail and the ESP32 5 V pin through the oval exit in the shell
+(bottom, hidden behind the stand horn) — then USB-C is programming
+only. Data from a GPIO to DIN, short lead, either way.
 
 ## Printed parts
 
