@@ -1,0 +1,392 @@
+<title>Word Clock — Arcade Concept Render</title>
+<style>
+  :root{
+    --bg:#eceef2; --ink:#1b1e26; --muted:#5b6170; --card:#f8f9fb; --line:#d5d9e2;
+    --accent:#a86e00; --accent-glow:#ffb300;
+    --device:#101218; --device2:#171a22;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#12141a; --ink:#e8eaf0; --muted:#9aa1b2; --card:#191c24; --line:#2a2e3a; --accent:#ffb300; }
+  }
+  :root[data-theme="dark"]{ --bg:#12141a; --ink:#e8eaf0; --muted:#9aa1b2; --card:#191c24; --line:#2a2e3a; --accent:#ffb300; }
+  :root[data-theme="light"]{ --bg:#eceef2; --ink:#1b1e26; --muted:#5b6170; --card:#f8f9fb; --line:#d5d9e2; --accent:#a86e00; }
+
+  *{box-sizing:border-box}
+  body{ background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; margin:0; padding:32px 20px 64px; }
+  .wrap{max-width:1040px; margin:0 auto}
+  .eyebrow{ font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace; font-size:12px; letter-spacing:.18em; color:var(--accent); text-transform:uppercase; margin:0 0 10px; }
+  h1{ font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace; font-size:clamp(26px,4.5vw,38px); line-height:1.15; margin:0 0 12px; text-wrap:balance; letter-spacing:-.01em; }
+  .lede{ color:var(--muted); max-width:62ch; margin:0 0 28px; }
+  .lede strong{color:var(--ink)}
+
+  /* controls */
+  .controls{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:14px; background:var(--card); border:1px solid var(--line); border-radius:12px; margin-bottom:26px; }
+  .controls .hint{ flex-basis:100%; font-size:13px; color:var(--muted); margin:0; }
+  button.demo{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px; letter-spacing:.04em; padding:9px 14px; border-radius:999px; border:1px solid var(--line); background:transparent; color:var(--ink); cursor:pointer; transition:border-color .15s, background .15s, transform .05s; }
+  button.demo:hover{ border-color:var(--accent); }
+  button.demo:active{ transform:translateY(1px); }
+  button.demo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  button.demo:disabled{ opacity:.45; cursor:default; }
+  label.tog{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px; display:flex; gap:8px; align-items:center; margin-left:auto; color:var(--muted); cursor:pointer; }
+  label.tog input{accent-color:var(--accent-glow)}
+
+  /* concept cards */
+  .duo{ display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start; justify-content:center; margin-bottom:40px; }
+  .concept{ flex:1 1 340px; max-width:460px; display:flex; flex-direction:column; align-items:center; gap:18px; }
+  .concept h2{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:15px; letter-spacing:.14em; text-transform:uppercase; margin:0; }
+  .concept .notes{ font-size:14px; color:var(--muted); margin:0; padding:0 6px; list-style:none; display:flex; flex-direction:column; gap:6px; max-width:44ch; }
+  .concept .notes li::before{ content:"▸ "; color:var(--accent); }
+
+  /* ------- the LED face (shared) ------- */
+  .face-wrap{ container-type:inline-size; width:100%; }
+  .face{ display:grid; grid-template-columns:repeat(16,1fr); aspect-ratio:1; background:#07080b; border-radius:6px; padding:3.5%; box-shadow:inset 0 0 30px rgba(0,0,0,.9); }
+  .cell{ display:grid; place-items:center; font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace; font-weight:700; font-size:3.6cqi; line-height:1; color:rgba(235,240,255,.13); transition:color .2s ease, text-shadow .2s ease; user-select:none; }
+
+  /* ------- full arcade cabinet ------- */
+  .cabinet{ width:min(400px,100%); background:linear-gradient(180deg,#1c1e26,#14161c); border-radius:10px 10px 6px 6px; padding:0 14px 14px; position:relative; box-shadow:0 18px 40px rgba(0,0,0,.35); }
+  .cabinet::before,.cabinet::after{ content:""; position:absolute; top:8px; bottom:8px; width:7px; border-radius:4px; background:repeating-linear-gradient(45deg,#e23b3b 0 9px,#ff8c3b 9px 18px,#ffd93b 18px 27px); opacity:.9; }
+  .cabinet::before{left:0} .cabinet::after{right:0}
+  .marquee{ margin:0 -6px; padding:16px 10px 14px; text-align:center; background:linear-gradient(180deg,#0b0c10,#15161c); border-radius:10px 10px 0 0; border-bottom:2px solid #000; }
+  .marquee .name{ font-family:ui-monospace,Menlo,Consolas,monospace; font-weight:800; font-size:clamp(17px,5cqi,22px); letter-spacing:.22em; color:#ffb300; text-shadow:0 0 10px rgba(255,179,0,.75),0 0 26px rgba(255,179,0,.4); }
+  .marquee .sub{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:9px; letter-spacing:.3em; color:#5b6170; margin-top:5px; }
+  .bezel{ background:#0b0c10; border-radius:10px; padding:12px; margin:12px 2px; box-shadow:0 2px 0 rgba(255,255,255,.04) inset; }
+  .panel{ margin:0 6px; height:58px; background:linear-gradient(180deg,#23262f,#181a21); clip-path:polygon(4% 0,96% 0,100% 100%,0 100%); display:flex; align-items:center; justify-content:center; gap:38px; }
+  .stick{ width:16px; height:16px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#ff7a7a,#c21f1f 70%); box-shadow:0 10px 0 -6px #000; position:relative; }
+  .stick::after{ content:""; position:absolute; left:6px; top:14px; width:4px; height:12px; background:#333; border-radius:2px; }
+  .btn-a,.btn-b{ width:15px; height:15px; border-radius:50%; box-shadow:0 2px 0 #000, inset 0 -3px 4px rgba(0,0,0,.5); }
+  .btn-a{ background:#e23b3b } .btn-b{ background:#3b8ee2 }
+  .coin{ margin:10px 6px 0; text-align:center; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:10px; letter-spacing:.32em; color:#ffb300; text-shadow:0 0 8px rgba(255,179,0,.6); animation:blink 1.6s steps(1) infinite; }
+  @keyframes blink{ 50%{opacity:.15} }
+  @media (prefers-reduced-motion: reduce){ .coin{animation:none} }
+
+  /* ------- subtle wedge ------- */
+  .wedge{ width:min(400px,100%); display:flex; flex-direction:column; align-items:center; }
+  .frame{ width:100%; background:linear-gradient(180deg,var(--device2),var(--device)); border-radius:16px; padding:16px; box-shadow:0 18px 40px rgba(0,0,0,.3); }
+  .stand{ width:52%; height:22px; background:linear-gradient(180deg,#14161c,#0e1015); clip-path:polygon(7% 0,93% 0,100% 100%,0 100%); margin-top:-2px; border-radius:0 0 6px 6px; }
+
+  /* prose sections */
+  section.prose{ max-width:70ch; margin:0 auto 30px; }
+  section.prose h3{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:14px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 10px; }
+  section.prose p{ margin:0 0 12px; color:var(--muted); }
+  section.prose p strong{ color:var(--ink); }
+  .qbox{ max-width:70ch; margin:0 auto; padding:16px 18px; border:1px dashed var(--line); border-radius:12px; color:var(--muted); font-size:15px; }
+  .qbox strong{color:var(--ink)}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Concept render · 16×16 WS2812 · ESP32-S3</p>
+  <h1>One clock, two shells</h1>
+  <p class="lede">Both faces below are the <strong>same grid, same firmware, live right now</strong> — they're showing your actual local time using the real word-clock logic, and the demo buttons run the actual animation concepts. The only differences between the two concepts are the enclosure and how loudly the filler letters announce themselves.</p>
+
+  <div class="controls">
+    <p class="hint">Animations run on both faces at once so you can compare how each shell carries them. On the real clock these fire automatically on time changes, on an idle timer, or from the web UI.</p>
+    <button class="demo" data-fx="pac">▶ Pac-Man eats the time</button>
+    <button class="demo" data-fx="rain">▶ Matrix rain</button>
+    <button class="demo" data-fx="invader">▶ Invader attract mode</button>
+    <button class="demo" data-fx="ghost">▶ Ghost attract mode</button>
+    <button class="demo" data-fx="hidden">▶ Reveal hidden words</button>
+    <label class="tog"><input type="checkbox" id="ambient" checked> wandering Pac-Man</label>
+  </div>
+
+  <div class="duo">
+    <div class="concept">
+      <h2>A — Full arcade</h2>
+      <div class="cabinet">
+        <div class="marquee"><div class="name">TIME INVADERS</div><div class="sub">© 1982 BITBARISTA</div></div>
+        <div class="bezel"><div class="face-wrap"><div class="face" id="faceA"></div></div></div>
+        <div class="panel"><div class="stick"></div><div class="btn-a"></div><div class="btn-b"></div></div>
+        <div class="coin">INSERT COIN</div>
+      </div>
+      <ul class="notes">
+        <li>Mini-cabinet stand: marquee, T-moulding stripes, control panel, coin legend.</li>
+        <li>Livery comes from <em>separate single-colour printed parts</em>, not multi-colour printing.</li>
+        <li>Filler letters are deliberately arcade words — invisible until an animation lights them.</li>
+      </ul>
+    </div>
+
+    <div class="concept">
+      <h2>B — Subtle</h2>
+      <div class="wedge">
+        <div class="frame"><div class="face-wrap"><div class="face" id="faceB"></div></div></div>
+        <div class="stand"></div>
+      </div>
+      <ul class="notes">
+        <li>Plain 12° wedge in one dark colour; reads as a modern desk object.</li>
+        <li>Identical animations — the arcade lives entirely in the light, not the shell.</li>
+        <li>Same hidden-word grid (or random filler if you'd rather keep it straight).</li>
+      </ul>
+    </div>
+  </div>
+
+  <section class="prose">
+    <h3>Reading the face</h3>
+    <p>The clock reads the <strong>exact minute in words</strong> — IT IS TWENTY THREE MINUTES PAST FOUR. What makes per-minute wording fit a 16×16 grid is letter-sharing: FOURTEEN carries FOUR inside it, SEVENTEEN carries SEVEN, TWONE is TWO and ONE, THREELEVEN is THREE and ELEVEN, and PASTO is PAST and TO. Because the letters are a fixed stencil, the Matrix rain has a lovely property: the "falling glyphs" are the real letters of the face, and the rain literally resolves into the time.</p>
+  </section>
+
+  <section class="prose">
+    <h3>The livery question</h3>
+    <p>You don't need a multi-colour printer for the cabinet look. The face plate uses your layer-swap trick (dark → white diffuser → dark, letters as voids in a pixel stencil font). The cabinet livery is achieved by printing the shell as <strong>separate parts in different filament colours</strong> — black body, amber marquee surround, red/yellow T-moulding strips that snap into grooves — which is exactly how real cabinets are built, and single-colour parts assembled always look cleaner than colour changes mid-part. The marquee text itself can be a second stencil with an LED behind it.</p>
+  </section>
+
+  <p class="qbox"><strong>The decision:</strong> shell A or shell B — everything on the screen is common to both. There's also a middle path: the subtle wedge with a snap-on marquee, so the cabinet is optional dress-up.</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+const GRID = [
+  "ITKISAHIGHSCOREZ",
+  "TWENTYINSERTCOIN",
+  "FOURTEENSIXTEENA",
+  "SEVENTEENTWELVEB",
+  "EIGHTEENNINETEEN",
+  "THIRTEENQUARTERS",
+  "THREELEVENTENZAP",
+  "TWONEFIVEHALFPAC",
+  "MINUTESXPASTOPOW",
+  "TWONETHREEIGHTGO",
+  "SEVENINEFOURFIVE",
+  "SIXTENELEVENGAME",
+  "TWELVEOCLOCKOVER",
+  "SPACEINVADERSPEW",
+  "GALAGADONKEYKONG",
+  "THEMATRIXQBERTUP"
+];
+// per-minute vocabulary; letter-sharing: FOURTEEN⊃FOUR, SIXTEEN⊃SIX,
+// SEVENTEEN⊃SEVEN, EIGHTEEN⊃EIGHT, NINETEEN⊃NINE, THREELEVEN =
+// THREE+ELEVEN, TWONE = TWO+ONE, THREEIGHT, SEVENINE, PASTO,
+// MINUTE ⊂ MINUTES
+const W = {
+  IT:[0,0,2], IS:[0,3,2], A:[0,5,1],
+  M1:[7,2,3],  M2:[7,0,3],  M3:[6,0,5],  M4:[2,0,4],  M5:[7,5,4],
+  M6:[2,8,3],  M7:[3,0,5],  M8:[4,0,5],  M9:[4,8,4],  M10:[6,10,3],
+  M11:[6,4,6], M12:[3,9,6], M13:[5,0,8], M14:[2,0,8], M15:[5,8,7],
+  M16:[2,8,7], M17:[3,0,9], M18:[4,0,8], M19:[4,8,8], M20:[1,0,6],
+  M30:[7,9,4],
+  MINUTE:[8,0,6], MINUTES:[8,0,7], PAST:[8,8,4], TO:[8,11,2],
+  H1:[9,2,3],  H2:[9,0,3],  H3:[9,5,5],  H4:[10,8,4], H5:[10,12,4],
+  H6:[11,0,3], H7:[10,0,5], H8:[9,9,5],  H9:[10,4,4], H10:[11,3,3],
+  H11:[11,6,6], H12:[12,0,6], OCLOCK:[12,6,6]
+};
+const C = {
+  off:null, lit:"#ffffff", accent:"#ffb300",
+  pac:"#ffd93b", red:"#ff4d4d", cyan:"#4dd9ff",
+  eye:"#ffffff", pupil:"#3b5bff",
+  mg:"#4be15f", mg2:"#2e9440", mg3:"#1c5c2a", mghead:"#d9ffdc",
+  fright:"#3b5bff", orange:"#ff8c3b"
+};
+const idx = (r,c)=> r*16+c;
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function wordCells(key){
+  const [r,c0,len] = W[key], out=[];
+  for(let k=0;k<len;k++) out.push(idx(r,c0+k));
+  return out;
+}
+function timeWords(d){
+  let h = d.getHours()%12 || 12;
+  const m = d.getMinutes();
+  const ks = ["IT","IS"];
+  if(m === 0){ ks.push("H"+h, "OCLOCK"); return {keys:ks}; }
+  const past = m <= 30;
+  const mm = past ? m : 60 - m;
+  if(mm === 15) ks.push("A","M15");
+  else if(mm === 30) ks.push("M30");
+  else if(mm === 20) ks.push("M20","MINUTES");
+  else if(mm > 20) ks.push("M20","M"+(mm-20),"MINUTES");
+  else ks.push("M"+mm, mm === 1 ? "MINUTE" : "MINUTES");
+  ks.push(past ? "PAST" : "TO");
+  ks.push("H"+(past ? h : h%12 + 1));
+  return {keys:ks};
+}
+
+class Clock {
+  constructor(el){
+    this.cells = [];
+    for(let r=0;r<16;r++) for(let c=0;c<16;c++){
+      const s = document.createElement("span");
+      s.className = "cell";
+      s.textContent = GRID[r][c];
+      el.appendChild(s);
+      this.cells.push(s);
+    }
+    this.busy = false;
+    this.pac = {r:13,c:3, hist:[]};
+    this.paint();
+  }
+  baseMap(){
+    const map = new Map();
+    const t = timeWords(new Date());
+    for(const k of t.keys) for(const i of wordCells(k)) map.set(i, C.lit);
+    return map;
+  }
+  paint(overrides, hideBase){
+    const base = hideBase ? new Map() : this.baseMap();
+    if(!this.busy && ambientOn && !hideBase){
+      const g = this.pac.hist[this.pac.hist.length-7];
+      if(g) base.set(idx(g.r,g.c), C.red);
+      base.set(idx(this.pac.r,this.pac.c), C.pac);
+    }
+    if(overrides) for(const [i,col] of overrides) col===C.off ? base.delete(i) : base.set(i,col);
+    for(let i=0;i<256;i++){
+      const col = base.get(i);
+      const s = this.cells[i];
+      if(col){ s.style.color = col; s.style.textShadow = `0 0 6px ${col}, 0 0 16px ${col}55`; }
+      else { s.style.color = ""; s.style.textShadow = "none"; }
+    }
+  }
+  stepAmbient(){
+    if(this.busy || !ambientOn) return;
+    const lit = this.baseMap();
+    const p = this.pac;
+    const moves = [[0,1],[0,-1],[1,0],[-1,0]].sort(()=>Math.random()-.5);
+    let best = null;
+    for(const [dr,dc] of moves){
+      const r = p.r+dr, c = p.c+dc;
+      if(r<0||r>15||c<0||c>15) continue;
+      if(!best) best = {r,c};
+      if(!lit.has(idx(r,c))){ best = {r,c}; break; }
+    }
+    if(best){ p.hist.push({r:p.r,c:p.c}); if(p.hist.length>12) p.hist.shift(); p.r=best.r; p.c=best.c; }
+    this.paint();
+  }
+
+  async pacTransition(){
+    this.busy = true;
+    const lit = this.baseMap();
+    const rows = [...new Set([...lit.keys()].map(i=>Math.floor(i/16)))].sort((a,b)=>a-b);
+    const path = [];
+    rows.forEach((r,n)=>{
+      for(let c=0;c<16;c++) path.push([r, n%2 ? 15-c : c]);
+    });
+    const eaten = new Map();
+    for(let i=0;i<path.length+8;i++){
+      const ov = new Map(eaten);
+      if(i<path.length){ eaten.set(idx(...path[i]), C.off); ov.set(idx(...path[i]), C.pac); }
+      const g = path[i-7];
+      if(g) ov.set(idx(...g), C.red);
+      this.paint(ov);
+      await sleep(30);
+    }
+    this.paint(new Map(), true);
+    await sleep(350);
+    this.busy = false;
+    this.paint();
+  }
+
+  async matrixRain(){
+    this.busy = true;
+    const cols = Array.from({length:16}, ()=>({
+      y: -Math.random()*18, v: .35+Math.random()*.75, len: 4+Math.floor(Math.random()*4)
+    }));
+    const t0 = performance.now();
+    while(performance.now()-t0 < 3400){
+      const ov = new Map();
+      for(let c=0;c<16;c++){
+        const d = cols[c]; d.y += d.v;
+        const head = Math.floor(d.y);
+        for(let k=0;k<d.len;k++){
+          const r = head-k;
+          if(r>=0 && r<16) ov.set(idx(r,c), k===0?C.mghead : k<2?C.mg : k<4?C.mg2 : C.mg3);
+        }
+        if(head-d.len > 16){ d.y = -Math.random()*10; d.v = .35+Math.random()*.75; }
+      }
+      this.paint(ov, true);
+      await sleep(45);
+    }
+    const ov = new Map();
+    for(const i of this.baseMap().keys()) ov.set(i, C.mg);
+    this.paint(ov, true);
+    await sleep(700);
+    this.busy = false;
+    this.paint();
+  }
+
+  async invaderAttract(){
+    this.busy = true;
+    const F1 = ["..X.....X..","...X...X...","..XXXXXXX..",".XX.XXX.XX.","XXXXXXXXXXX","X.XXXXXXX.X","X.X.....X.X","...XX.XX..."];
+    const F2 = ["..X.....X..","X..X...X..X","X.XXXXXXX.X","XXX.XXX.XXX",".XXXXXXXXX.","..XXXXXXX..","..X.....X..",".X.......X."];
+    const seq = [0,1,2,3,3,2,1,0,1,2];
+    for(let s=0;s<seq.length;s++){
+      const bmp = s%2 ? F2 : F1, ov = new Map();
+      for(let r=0;r<8;r++) for(let c=0;c<11;c++)
+        if(bmp[r][c]==="X") ov.set(idx(r+4, c+1+seq[s]), C.mg);
+      this.paint(ov, true);
+      await sleep(300);
+    }
+    this.busy = false;
+    this.paint();
+  }
+
+  async ghostAttract(){
+    this.busy = true;
+    const G = [
+      "....BBBBBB....","..BBBBBBBBBB..",".BBBBBBBBBBBB.",".BWWWBBBBWWWB.",
+      "BBWWWBBBBWWWBB","BBWPPBBBBWPPBB","BBBBBBBBBBBBBB","BBBBBBBBBBBBBB",
+      "BBBBBBBBBBBBBB","BBBBBBBBBBBBBB","BBBBBBBBBBBBBB","BBBBBBBBBBBBBB",
+      "BBBBBBBBBBBBBB","BB.BBB..BBB.BB"
+    ];
+    const draw = (body)=>{
+      const ov = new Map();
+      for(let r=0;r<14;r++) for(let c=0;c<14;c++){
+        const ch = G[r][c];
+        if(ch==="B") ov.set(idx(r+1,c+1), body);
+        else if(ch==="W") ov.set(idx(r+1,c+1), C.eye);
+        else if(ch==="P") ov.set(idx(r+1,c+1), C.pupil);
+      }
+      this.paint(ov, true);
+    };
+    draw(C.red);   await sleep(900);
+    draw(C.fright);await sleep(900);
+    for(let k=0;k<2;k++){ draw("#e8ecff"); await sleep(160); draw(C.fright); await sleep(160); }
+    this.busy = false;
+    this.paint();
+  }
+
+  async hiddenWords(){
+    this.busy = true;
+    const words = [
+      [[[1,6,10]], C.accent],                 // INSERT COIN
+      [[[11,12,4],[12,12,4]], C.red],         // GAME / OVER (stacked)
+      [[[0,6,9]], C.cyan],                    // HIGH SCORE
+      [[[6,13,3],[7,13,3],[8,13,3]], C.pac],  // ZAP / PAC / POW (stacked)
+      [[[13,0,13]], C.mg],                    // SPACE INVADERS
+      [[[14,6,10]], C.orange],                // DONKEY KONG
+      [[[15,0,9]], C.mg]                      // THE MATRIX
+    ];
+    for(const [ranges,col] of words){
+      const ov = new Map();
+      for(const [r,c0,len] of ranges)
+        for(let k=0;k<len;k++) ov.set(idx(r,c0+k), col);
+      this.paint(ov, true);
+      await sleep(750);
+    }
+    this.busy = false;
+    this.paint();
+  }
+}
+
+let ambientOn = !reduced;
+const box = document.getElementById("ambient");
+box.checked = ambientOn;
+const A = new Clock(document.getElementById("faceA"));
+const B = new Clock(document.getElementById("faceB"));
+const both = [A,B];
+
+box.addEventListener("change", ()=>{ ambientOn = box.checked; both.forEach(k=>!k.busy&&k.paint()); });
+setInterval(()=>both.forEach(k=>k.stepAmbient()), 380);
+setInterval(()=>both.forEach(k=>!k.busy&&k.paint()), 1000);
+
+const fx = { pac:"pacTransition", rain:"matrixRain", invader:"invaderAttract", ghost:"ghostAttract", hidden:"hiddenWords" };
+const buttons = [...document.querySelectorAll("button.demo")];
+for(const b of buttons){
+  b.addEventListener("click", async ()=>{
+    if(both.some(k=>k.busy)) return;
+    buttons.forEach(x=>x.disabled=true);
+    await Promise.all(both.map(k=>k[fx[b.dataset.fx]]()));
+    buttons.forEach(x=>x.disabled=false);
+  });
+}
+})();
+</script>
