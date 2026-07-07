@@ -80,12 +80,16 @@ Downloads). The pod face is its mounting panel: 13.6 × 6.3 mm R1.3
 cutout in a 2.0 mm face; the socket snaps in from the outside, body
 and wires pass straight through into the enclosure. Rated 5 A.
 
-- **Buy the 4P (PD/fast-charge) variant, not the 2P.** The 2-wire
-  version has no CC pins, and a compliant USB-C supply won't enable
-  VBUS at all without CC termination (it only works on A-to-C
-  cables). The 4P version brings CC out; if the CC wires are
-  unterminated, fit **5.1 kΩ from each CC to GND** to request
-  5 V/3 A.
+- **Buy the 4P fast-charge/PD pinout (V+, V−, CC1, CC2) — not the
+  2P, and not the 4P "data" pinout (D+/D−).** Without CC pins a
+  compliant USB-C supply never enables VBUS on a C-to-C cable.
+- The CC wires connect to **nothing downstream** — their only job is
+  the supply handshake. Solder **5.1 kΩ from CC1 to GND and 5.1 kΩ
+  from CC2 to GND** (one each, not shared) right at the pigtail,
+  heat-shrink, tuck away. This requests 5 V/3 A. If the delivered
+  socket has the resistors built in (listing says "with CC resistor",
+  or only V+/V− emerge), skip this — VBUS and GND are then the only
+  connections.
 - **It must present 5 V.** These passthrough sockets don't negotiate
   voltage themselves, but verify with a multimeter before first
   connection to the panel — 9/12/20 V kills WS2812s instantly.
