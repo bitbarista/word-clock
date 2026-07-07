@@ -23,7 +23,9 @@ not started.**
 |---|---|
 | 16×16 WS2812B flexible panel | 160×160 mm, 10 mm pitch — the common ~£12–15 one |
 | ESP32-S3 supermini | in stock; WiFi NTP + web UI + animations |
-| 5 V / 4 A PSU | firmware caps brightness; full-white would need 15 A, we never go there |
+| 5 V / 3 A USB-C supply | powers everything through the side port; see power budget below |
+| 1000 µF electrolytic (≥6.3 V) | across 5 V/GND at the panel pigtail |
+| 330 Ω resistor | in the data line to DIN |
 | 3 mm foam sheet | behind the panel, pressed by the shell ribs |
 | 4× M3×8 self-tapping screws | shell → faceplate corner posts |
 | Level shifter (optional) | 3.3 V data usually drives WS2812B fine at 5 V; add 74AHCT125 if flaky |
@@ -32,18 +34,42 @@ not started.**
 
 The ESP32 sits in a corner cradle with its **onboard USB-C protruding
 through the side wall** (right side viewed from the front; `usb_side`
-flips it) — so you can flash/update firmware without opening the case,
-and a single USB-C lead can power the clock for normal use: the word
-display lights ~20–30 LEDs and stays well under 1 A. Note the panel's
-current then flows through the supermini's VBUS diode, so firmware
-must cap global brightness (~30 %) and attract-mode/full-face
-animations especially.
+flips it) — flash/update firmware without opening the case, and one
+USB-C lead powers everything.
 
-If you ever want to run brighter, wire the PSU 5 V/GND directly to
-the panel pigtail and the ESP32 5 V pin — the back panel is clean by
-design, so add a cable exit in `shell()` first (or use a right-angle
-USB-C lead and a beefier supply, accepting the diode limit). Data from
-a GPIO to DIN, short lead, either way.
+### Power budget & protection
+
+The numbers (WS2812B ≈ 60 mA/LED full white):
+
+| Frame | @30 % brightness |
+|---|---|
+| Word display, worst wording (~32 cells white) | ~0.6 A |
+| Full-face sprite (~130 cells, coloured) | ~1.2–2 A |
+| All 256 white (the trap) | ~4.6 A |
+
+A global brightness cap therefore does NOT guarantee a safe current
+for arbitrary animation frames. Two-layer solution:
+
+1. **Per-frame power limiting in firmware — mandatory.**
+   `FastLED.setMaxPowerInVoltsAndMilliamps(5, 1200)` scales each
+   frame so its computed power never exceeds the budget. Sparse word
+   frames render at full set brightness; dense attract-mode frames
+   dim themselves automatically. This is the guarantee — no animation
+   we ever add can exceed the budget.
+2. **Bypass the VBUS diode for headroom.** Measure USB VBUS vs the
+   5 V pin: a ~0.3 V drop means a Schottky (SS14-class, 1–2 A) is in
+   the path (some clones have none). If present, solder the panel's
+   5 V feed to the USB side of it (or jumper across). The budget can
+   then rise to ~2–2.5 A with a 5 V/3 A USB-C supply.
+
+Supporting cast, standard WS2812 practice: **1000 µF electrolytic**
+across 5 V/GND at the panel pigtail (also stops the ESP32 browning
+out on frame spikes — it shares the rail), **330 Ω** in the data line,
+short 20 AWG power wires. Data from a GPIO to DIN, short lead.
+
+The back panel is deliberately clean; if you ever outgrow USB-C power
+entirely, add a cable exit in `shell()` and feed the pigtail from a
+dedicated 5 V PSU.
 
 ## Printed parts
 
