@@ -200,11 +200,41 @@ into the opening → lattice on top of it → panel (data pigtail to the
 ESP32 corner) → foam (cut a channel for the power wires) → shell with
 ESP32 and pod wiring attached → four screws.
 
-## Firmware (next phase)
+## Firmware (`firmware/`, PlatformIO)
 
-ESP32-S3, NTP + web UI (animation pick/interval, colours, brightness
-schedule, timezone), transition animations (Pac-Man eat, Matrix rain,
-Tetris drop, invader zap), wandering-Pac ambient mode, attract mode,
-hidden-word easter eggs. MQTT/Home Assistant notification words are a
-possible v2. The artifact linked above is the behavioural spec — the
-grid, word logic and animations there are what the firmware should do.
+ESP32-S3 supermini, WS2812B on `LED_PIN` (default GPIO4, set in
+`platformio.ini`). Build & flash: `cd firmware && pio run -t upload`.
+After the first USB flash, updates go over the web UI (upload the
+`.pio/build/supermini/firmware.bin`).
+
+**First boot:** no WiFi credentials → the clock starts an access
+point `TIME-INVADERS` (password `insertcoin`); join it and open
+`http://192.168.4.1`. Once on your WiFi it's `http://timeinvaders.local`.
+Until it has the time it displays INSERT COIN in amber.
+
+Features (all from the mobile web UI):
+- **Time**: NTP with POSIX timezones (auto DST) when online; runs
+  from the internal clock without WiFi; one-tap "sync from this
+  device" in AP mode; last-known time restored after power loss
+  (approximate until re-synced).
+- **Per-minute word clock** with quick crossfades on minute ticks and
+  a big arcade transition on 5-minute changes: Pac-Man eats the time,
+  Matrix rain, cannon shoot-up, invader zap, Tetris drop, or random.
+- **Attract mode** on a configurable interval: invader march, ghost
+  show, Pac chase, cannon-vs-invader duel (ends on the hidden POW),
+  long Matrix rain, INSERT COIN / HIGH SCORE.
+- **Hidden arcade word glints** on their own interval, each in its
+  own colour, with the time still readable.
+- **Ambient wandering Pac-Man + chasing ghost** during time display.
+- **Themes**: Arcade / Matrix / Amber CRT / Ice presets + full custom
+  colour pickers.
+- Brightness + night dimming window; **per-frame FastLED power
+  limiting** (budget configurable, panel current physically bounded).
+- **Panel mapping** (rotate/serpentine/mirror) with an on-LED
+  orientation test — no reflashing to fix a differently-wired panel.
+- Live 16×16 preview of the actual frame in the web UI.
+- Web OTA, mDNS, captive AP setup, settings persisted in NVS.
+
+The interactive artifact (link at the top) is the behavioural spec —
+grid, word logic and animations match it. MQTT/Home Assistant
+notification words remain a possible v2.
