@@ -2,10 +2,10 @@
 // TIME INVADERS — 16x16 word clock, subtle desk-wedge enclosure
 // -----------------------------------------------------------------
 // Shell concept "B — Subtle": plain slab in a raked desk stand.
-// Face prints LETTERS-DOWN with two filament swaps:
-//     0.0 – 1.0 mm  dark   (letter stencil layer)
-//     1.0 – 1.6 mm  white  (diffuser the LEDs glow through)
-//     1.6 mm – end  dark   (baffle lattice + tray body)
+// The face is a LAYERED STACK of single-colour prints (no filament
+// swaps): dark stencil plate (letters are through-voids) → drop-in
+// diffuser sheet (print several thicknesses/materials and A/B them)
+// → drop-in baffle lattice → LED panel → foam → shell.
 // Electronics: 16x16 WS2812B flexible panel (160x160, 10 mm pitch)
 // + ESP32-S3 supermini.  See README.md for the print/assembly guide.
 // =================================================================
@@ -16,7 +16,7 @@ echo(str("word clock model v", VERSION));
 include <font.scad>
 
 /* [Part] */
-part = "assembly"; // [assembly, faceplate, shell, stand, pod, coupon, face2d]
+part = "assembly"; // [assembly, faceplate, lattice, diffuser, shell, stand, pod, coupon, coupon_diffuser, face2d]
 
 /* [LED panel] */
 // LED-to-LED spacing of the matrix panel
@@ -29,9 +29,10 @@ panel_t = 2.0;
 foam_t = 3.0;
 
 /* [Face plate] */
-// dark stencil layer in front of the diffuser (print: swap to white here)
-t_front = 1.0;
-// white diffuser layer (print: swap back to dark after this)
+// stencil plate thickness (letters are through-voids)
+t_front = 1.2;
+// diffuser sheet thickness — a SEPARATE drop-in part; print a few
+// (0.6 / 0.9 / 1.2, clear vs white) and A/B them in the coupon slot
 t_diff = 0.6;
 // depth of the per-cell baffle lattice behind the diffuser
 baffle_d = 12;
@@ -142,9 +143,8 @@ COUPON = [
 ];
 
 // derived
-t_face   = t_front + t_diff;                  // solid face thickness
 face_w   = cells * pitch + 2 * bezel;         // 184
-wall_top = t_face + baffle_d + panel_t + foam_t + 0.4;  // 19.0
+wall_top = t_front + baffle_d + panel_t + foam_t + 0.4;  // 18.6
 slab_t   = wall_top + lid_t;                  // total device thickness
 post_off = face_w/2 - 8.5;                    // corner post centres
 lip_out  = face_w/2 - wall_t - 0.4;           // shell lip outer half-width
@@ -172,45 +172,102 @@ module face_core(n, grid, fw, tray = true) {
     gs = n * pitch;      // LED grid span
     op = gs + 1;         // panel opening (0.5 clearance/side)
 
-    // stencil layer (dark on the bed)
+    // stencil plate: letters are through-voids, the diffuser sheet
+    // sits directly behind (dropped in at assembly)
     linear_extrude(t_front)
         difference() { rsq(fw); letters2d(n, grid); }
 
-    // diffuser layer (white)
-    translate([0, 0, t_front]) linear_extrude(t_diff) rsq(fw);
-
-    // bezel ring + per-cell baffle lattice (dark again)
-    translate([0, 0, t_face]) linear_extrude(baffle_d) {
+    // bezel border ring down to the panel plane; the separate
+    // lattice part drops into the opening
+    translate([0, 0, t_front]) linear_extrude(baffle_d)
         difference() { rsq(fw); square(op, center = true); }
-        for (k = [0:n]) {
-            translate([-gs/2 + k*pitch, 0]) square([lat_wall, op + 2], center = true);
-            translate([0, -gs/2 + k*pitch]) square([op + 2, lat_wall], center = true);
-        }
-    }
 
     if (tray) {
         // perimeter tray wall up to the shell seat, notched so the
         // ESP32's onboard USB-C protrudes through the side (open to
         // the wall top: the connector drops in as the tray closes)
         difference() {
-            translate([0, 0, t_face]) linear_extrude(wall_top - t_face)
+            translate([0, 0, t_front]) linear_extrude(wall_top - t_front)
                 difference() { rsq(fw); rsq(fw - 2*wall_t, corner_r - 1); }
             translate([usb_side * fw/2, -fw/2 + usb_up, wall_top])
                 cube([2*wall_t + 4, 13, 13], center = true);
         }
         // corner screw posts
         for (sx = [-1, 1], sy = [-1, 1])
-            translate([sx*post_off, sy*post_off, t_face])
+            translate([sx*post_off, sy*post_off, t_front])
                 difference() {
-                    cylinder(d = 7, h = wall_top - t_face);
-                    translate([0, 0, wall_top - t_face - 10])
+                    cylinder(d = 7, h = wall_top - t_front);
+                    translate([0, 0, wall_top - t_front - 10])
                         cylinder(d = post_hole_d, h = 10 + eps);
                 }
     }
 }
 
 module faceplate() face_core(cells, GRID, face_w);
-module coupon()    face_core(4, COUPON, 4*pitch + 8, tray = false);
+
+// drop-in baffle lattice: registers in the faceplate's opening,
+// presses the diffuser sheet against the stencil plate. Depth is
+// derived so stencil + diffuser + lattice = panel plane; if you
+// settle on a different diffuser thickness, reprint to match.
+module lattice() {
+    gs = cells * pitch;
+    ow = gs + 0.6;                    // opening is gs+1, 0.2/side play
+    ld = baffle_d - t_diff;
+    linear_extrude(ld) {
+        difference() { square(ow, center = true);
+                       square(ow - 2*lat_wall, center = true); }
+        for (k = [0:cells]) {
+            translate([-gs/2 + k*pitch, 0]) square([lat_wall, ow], center = true);
+            translate([0, -gs/2 + k*pitch]) square([ow, lat_wall], center = true);
+        }
+    }
+}
+
+// diffuser sheet: the experiment. Print at t_diff in clear or white
+// (0.6 / 0.9 / 1.2 are worth comparing), 100% infill.
+module diffuser() {
+    linear_extrude(t_diff) square(cells*pitch + 0.4, center = true);
+}
+
+// ----------------------------------------------------------------
+// coupon: 4x4 sample of the face with a SLIDE-IN diffuser slot on
+// one edge — swap test strips while holding it over a lit LED.
+// ----------------------------------------------------------------
+coupon_n = 4;
+coupon_fw = coupon_n*pitch + 8;
+coupon_slot = 1.5;   // slot height: takes diffuser strips up to 1.3
+
+module coupon() {
+    gs = coupon_n * pitch;
+    op = gs + 1;
+    // stencil
+    linear_extrude(t_front)
+        difference() { rsq(coupon_fw); letters2d(coupon_n, COUPON); }
+    // spacer ring forming the slot, open on the -y edge
+    translate([0, 0, t_front]) linear_extrude(coupon_slot)
+        difference() {
+            rsq(coupon_fw);
+            square(op, center = true);
+            translate([0, -coupon_fw/2]) square([op, coupon_fw], center = true);
+        }
+    // integrated mini lattice above the slot
+    translate([0, 0, t_front + coupon_slot]) linear_extrude(10) {
+        difference() { rsq(coupon_fw); square(op, center = true); }
+        for (k = [0:coupon_n]) {
+            translate([-gs/2 + k*pitch, 0]) square([lat_wall, op + 2], center = true);
+            translate([0, -gs/2 + k*pitch]) square([op + 2, lat_wall], center = true);
+        }
+    }
+}
+
+// test strip for the coupon slot: sized to slide, with a pull tab
+module coupon_diffuser() {
+    w = coupon_n*pitch + 0.4;
+    linear_extrude(t_diff) {
+        square(w, center = true);
+        translate([0, -w/2 - 4]) square([12, 9], center = true);
+    }
+}
 
 // ----------------------------------------------------------------
 // rear shell: flat lid, inner lip, foam-pressure ribs,
@@ -345,6 +402,9 @@ module assembly() {
 
 // ----------------------------------------------------------------
 if (part == "faceplate") faceplate();
+if (part == "lattice")   lattice();
+if (part == "diffuser")  diffuser();
+if (part == "coupon_diffuser") coupon_diffuser();
 if (part == "shell")     shell();
 if (part == "stand")     stand();
 if (part == "pod")       pod();

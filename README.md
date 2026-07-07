@@ -108,36 +108,44 @@ dedicated 5 V PSU.
 
 ## Printed parts
 
+Every part is a plain single-colour print — no filament swaps.
+
 | Part | File | Orientation | Colour |
 |---|---|---|---|
-| Faceplate + baffle | `part="faceplate"` | **as modelled** (letters on the bed) | dark → white → dark, see below |
+| Faceplate (stencil + tray) | `part="faceplate"` | letters on the bed | dark |
+| Baffle lattice (drop-in) | `part="lattice"` | flat on bed | dark |
+| Diffuser sheet (drop-in) | `part="diffuser"` | flat on bed, 100 % infill | white or clear — experiment |
 | Rear shell | `part="shell"` | outer face on bed | dark |
 | Desk stand | `part="stand"` | flat base on bed | dark |
 | Power pod | `part="pod"` | socket face on bed | dark |
-| Test coupon | `part="coupon"` | letters on bed | same swaps as faceplate |
+| Test coupon | `part="coupon"` | letters on bed | dark |
+| Coupon diffuser strips | `part="coupon_diffuser"` | flat, 100 % infill | one per candidate |
 
 Export: `openscad -o build/<part>.stl -D 'part="<part>"' wordclock.scad`
 (STLs are not committed — regenerate from source.)
 
-### Faceplate colour swaps (single-extruder filament change)
+### The face stack & the diffuser experiment
 
-The plate prints **letters-down**; the STL is already in print
-orientation, no flipping. Heights measured from the bed:
+The faceplate is a 1.2 mm dark stencil (letters are through-voids)
+with the bezel ring and tray behind it. The **diffuser is a separate
+sheet** that drops into the opening against the stencil's back, and
+the **lattice drops in after it**, pressing it flat; the panel, foam
+and shell clamp the whole stack. The diffuser is therefore swappable
+forever — four shell screws.
 
-- **0 – 1.0 mm** dark (the letter stencil — letters are voids)
-- **1.0 – 1.6 mm** white/natural (the diffuser the LEDs glow through)
-- **1.6 mm – end** dark (baffle lattice + tray body)
-
-At 0.2 mm layers that is: swap to white after layer 5, swap back to
-dark after layer 8. Set the two filament changes in your slicer and
-check its layer preview shows the letters closing over at the first
-swap. **Print the coupon first** — it is a 48 mm four-cell sample that
-validates the colour-change heights, letter legibility, and that the
-stencil-bridge font anchors cleanly on the bed.
+Finding the right diffuser is the point of the **coupon**: a 48 mm
+four-cell sample with a slide-in slot along one edge. Print
+`coupon_diffuser` strips at several thicknesses (set `t_diff` to 0.6 /
+0.9 / 1.2) in clear and white, slide each into the slot over a lit
+LED ~12 mm behind, and judge hotspots and glow. Clear PETG frosts
+usefully at 4–6 layers; white diffuses more per layer but costs
+brightness. When you've picked, set `t_diff` to the winner and print
+the full-size `diffuser` — the lattice depth derives from `t_diff`,
+so print the lattice after the decision.
 
 The font is a purpose-made 5×7 pixel stencil face (`font.scad`):
-letters with enclosed counters (A B D O P Q R) carry a bridge, so no
-first-layer island of plate material sits loose on the bed.
+letters with enclosed counters (A B D O P Q R) carry a bridge, so the
+stencil plate is self-supporting and nothing floats on the bed.
 
 ## The letter grid (per-minute)
 
@@ -178,14 +186,19 @@ thin fast.
 
 ## Enclosure stack (front → back)
 
-1.0 stencil + 0.6 diffuser + 12 baffle lattice (1.2 mm walls landing
-between LEDs) → panel (2.0) → foam (3.0) → shell ribs press it all
-against the baffle. Shell lip registers inside the tray wall, four M3
-self-tappers into the corner posts. Cable exits an oval in the shell
-30 mm above the bottom edge — just above the stand horn, hidden behind
-the slab. ESP32 sits in a fenced pocket on the shell.
+1.2 stencil plate → drop-in diffuser sheet (t_diff) → drop-in baffle
+lattice (1.2 mm walls landing between LEDs, depth = 12 − t_diff) →
+panel (2.0) → foam (3.0) → shell ribs press the whole stack against
+the stencil. Shell lip registers inside the tray wall, four M3
+self-tappers into the corner posts. Power enters the rear pod; the
+ESP32's USB-C pokes through the side wall for flashing.
 
-Face is 184×184 mm, slab 21.4 mm thick, 12° rake in the stand.
+Face is 184×184 mm, slab ~21 mm thick, 12° rake in the stand.
+
+Assembly order: faceplate letters-down on the desk → diffuser sheet
+into the opening → lattice on top of it → panel (data pigtail to the
+ESP32 corner) → foam (cut a channel for the power wires) → shell with
+ESP32 and pod wiring attached → four screws.
 
 ## Firmware (next phase)
 
