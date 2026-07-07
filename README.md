@@ -24,7 +24,7 @@ not started.**
 | 16×16 WS2812B flexible panel | 160×160 mm, 10 mm pitch — the common ~£12–15 one |
 | ESP32-S3 supermini | in stock; WiFi NTP + web UI + animations |
 | 5 V / 3 A USB-C supply | into the rear power breakout; see power budget below |
-| Panel-mount USB-C power breakout | RUNCCI-YUN style with 5.1 kΩ CC pull-downs; measure before printing shell |
+| Panel-mount USB-C power socket (pigtail) | MUST be 5 V output (PD-trigger types: 5 V variant only); measure before printing shell + pod |
 | 1000 µF electrolytic (≥6.3 V) | across 5 V/GND at the panel pigtail |
 | 330 Ω resistor | in the data line to DIN |
 | 3 mm foam sheet | behind the panel, pressed by the shell ribs |
@@ -59,20 +59,30 @@ for arbitrary animation frames. Two-layer solution:
    we ever add can exceed the budget (and it doubles as brown-out
    protection for the shared 5 V rail).
 2. **Separate power inlet — panel current never touches the dev
-   board.** A panel-mount USB-C power breakout (RUNCCI-YUN style)
-   sits in the back of the shell, bottom-left, outside the stand's
-   span: its VBUS feeds the panel pigtail AND the ESP32 5 V pin
-   directly; grounds common. The supermini's own side USB-C becomes
+   board.** A panel-mount USB-C power socket (pigtail type) sits in
+   a small **pod** on the back of the shell — bottom-middle, above
+   the stand horn, invisible in use. The socket body is too deep to
+   live inside the slab (the interior is all panel + foam), so the
+   pod bump-out provides its depth; it's a separate 10-minute print
+   that screws onto the lid from the inside over a matching cutout.
+   Its 5 V pigtail feeds the panel pigtail AND the ESP32 5 V pin
+   directly; grounds common (route the wires through a small channel
+   cut in the foam). The supermini's own side USB-C becomes
    flash/serial only — its VBUS diode now usefully isolates the two
    sources, so a laptop and the power supply can be connected at the
    same time. (If your supermini has no diode — no ~0.3 V drop
    between USB VBUS and the 5 V pin — don't plug both in at once.)
 
-Breakout notes: pick one with 5.1 kΩ CC pull-downs (advertised as
-supporting 5 V/3 A supplies — most power breakouts have them; a bare
-socket without them gets only 0.5–1.5 A from a USB-C PSU). **Measure
-your breakout before printing the shell** and set `pwr_hole_space`,
-`pwr_slot_w/h` in the Customizer — sellers vary.
+Socket notes — check the listing carefully:
+- **It must output 5 V.** A passthrough socket with 5.1 kΩ CC
+  pull-downs defaults to 5 V — good. A "PD trigger" module negotiates
+  a set voltage: only the 5 V variant is usable (9/12/20 V kills
+  WS2812s instantly). Verify with a multimeter before first
+  connection to the panel.
+- Without CC pull-downs a USB-C PSU only offers 0.5–1.5 A; "PD"
+  types handle this.
+- **Measure the socket before printing** and set `pwr_body` (w×h×d)
+  and `pwr_face_hole_d` in the Customizer — the defaults are guesses.
 
 Supporting cast, standard WS2812 practice: **1000 µF electrolytic**
 across 5 V/GND at the panel pigtail (also stops the ESP32 browning
@@ -90,6 +100,7 @@ dedicated 5 V PSU.
 | Faceplate + baffle | `part="faceplate"` | **as modelled** (letters on the bed) | dark → white → dark, see below |
 | Rear shell | `part="shell"` | outer face on bed | dark |
 | Desk stand | `part="stand"` | flat base on bed | dark |
+| Power pod | `part="pod"` | socket face on bed | dark |
 | Test coupon | `part="coupon"` | letters on bed | same swaps as faceplate |
 
 Export: `openscad -o build/<part>.stl -D 'part="<part>"' wordclock.scad`

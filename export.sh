@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")"
 mkdir -p build
-for part in faceplate shell stand coupon; do
+for part in faceplate shell stand pod coupon; do
     echo "=== $part"
     openscad -o "build/$part.stl" -D "part=\"$part\"" wordclock.scad 2>&1 \
         | grep -E 'Simple|ERROR|WARNING' || true
