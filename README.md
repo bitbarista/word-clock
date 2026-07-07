@@ -5,8 +5,8 @@ to the exact minute (`IT IS TWENTY THREE MINUTES PAST FOUR`), but time
 changes are game events —
 Pac-Man eats the old time, Matrix rain resolves into the new one — and
 the filler letters hide arcade words (INSERT COIN, GAME OVER, HIGH
-SCORE, PLAYER ONE, plus a bottom-rows hall of fame ending in THE
-MATRIX). Enclosure is the "subtle" concept: a plain dark slab in a
+SCORE, plus a bottom-rows hall of fame: SPACE INVADERS, GALAGA,
+DONKEY KONG, ASTEROIDS, Q*BERT). Enclosure is the "subtle" concept: a plain dark slab in a
 raked desk wedge, so it passes at a work desk; the arcade lives in the
 light, not the shell.
 
@@ -89,13 +89,13 @@ THIRTEEN QUARTER S            HIGH SCORE, INSERT COIN,
 THREELEVEN TEN ZAP            ZAP/PAC/POW (stacked), GO,
 TWONE FIVE HALF PAC           GAME/OVER (stacked),
 MINUTES X PASTO POW           SPACE INVADERS, PEW, GALAGA,
-TWONE THREEIGHT GO            DONKEY KONG, THE MATRIX, QBERT, UP
+TWONE THREEIGHT GO            DONKEY KONG, ASTEROIDS, QBERT, UP
 SEVENINE FOUR FIVE
 SIX TEN ELEVEN GAME
 TWELVE OCLOCK OVER
 SPACEINVADERS PEW
 GALAGA DONKEYKONG
-THEMATRIX QBERT UP
+ASTEROIDS QBERT UP
 ```
 
 Per-minute wording fits 16×16 through letter-sharing: FOURTEEN,

@@ -87,7 +87,7 @@ eps = 0.01;
 // hours + OCLOCK, 13-15 = arcade hall of fame.  Hidden words:
 // HIGH SCORE, INSERT COIN, ZAP/PAC/POW (stacked), GO, GAME/OVER
 // (stacked), SPACE INVADERS, PEW, GALAGA, DONKEY KONG,
-// THE MATRIX, QBERT, UP.  The X in row 8 is a deliberate spacer
+// ASTEROIDS, QBERT, UP.  The X in row 8 is a deliberate spacer
 // so the ever-lit MINUTES PAST reads as two words.
 // ----------------------------------------------------------------
 GRID = [
@@ -106,7 +106,7 @@ GRID = [
     "TWELVEOCLOCKOVER",
     "SPACEINVADERSPEW",
     "GALAGADONKEYKONG",
-    "THEMATRIXQBERTUP"
+    "ASTEROIDSQBERTUP"
 ];
 assert(len(GRID) == cells, "GRID row count != cells");
 for (r = [0:len(GRID)-1])
