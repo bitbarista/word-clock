@@ -63,15 +63,22 @@ usb_up = 28;
 esp_l = 22.8;
 esp_w = 18.4;
 // Rear power pod: a shallow bump-out on the back of the shell that
-// houses a panel-mount USB-C power socket (pigtail type) at the
+// houses a SNAP-IN panel-mount USB-C power socket at the
 // bottom-middle, above the stand horn. Feeds panel + ESP32 5V
-// directly; supermini USB-C stays flash-only. MEASURE YOUR SOCKET
-// before printing — defaults are guesses.
+// directly; supermini USB-C stays flash-only.
+// Dimensions from the NinthQua CHT-TS023R-H160-P4 drawing (4P
+// PD/fast-charge pigtail variant, 5A): cutout 13.6 x 6.3 R1.3,
+// flange 16.7 x 10.3 x 2.0, body ~12 x 5.3 x 14 deep, snap wings
+// spread to ~16 behind a ~2 mm panel.
 pwr_pod = true;
-// socket housing width x height x depth
-pwr_body = [16, 16, 14];
-// round mounting hole in the pod face (socket's threaded collar/nose)
-pwr_face_hole_d = 13;
+// snap-in cutout in the pod face
+pwr_snap_w = 13.6;
+pwr_snap_h = 6.3;
+pwr_snap_r = 1.3;
+// pod face (= panel the socket snaps onto) thickness
+pwr_face_t = 2.0;
+// interior cavity: body + wing deployment + wire pass-through
+pwr_cavity = [18, 9, 13];
 // pod centre height above the bottom face edge (keep pod + plug
 // clear of the 34 mm stand horn)
 pod_up = 48;
@@ -249,13 +256,13 @@ module shell() {
         translate([usb_side * (face_w/2 - 3.2), face_w/2 - usb_up, 7.2])
             cube([7.8, 16, 12], center = true);
         if (pwr_pod) {
-            // opening under the pod (socket body + wires pass through)
+            // opening under the pod (wires pass straight through)
             translate([0, face_w/2 - pod_up, -eps]) linear_extrude(lid_t + 2)
                 offset(2) offset(-2)
-                    square([pwr_body[0] + 2, pwr_body[1] + 2], center = true);
+                    square([pwr_cavity[0], pwr_cavity[1]], center = true);
             // pod ear screw holes (M3 from the inside, into the pod)
             for (s = [-1, 1])
-                translate([s*(pwr_body[0]/2 + pod_wall + 6),
+                translate([s*(pwr_cavity[0]/2 + pod_wall + 6),
                            face_w/2 - pod_up, -eps])
                     cylinder(d = 3.4, h = lid_t + 2);
         }
@@ -268,25 +275,27 @@ module shell() {
 // (socket face on the bed, open flange up — no supports).
 // ----------------------------------------------------------------
 module pod() {
-    iw = pwr_body[0] + 2;            // cavity w (1 mm play each side)
-    ih = pwr_body[1] + 2;
-    id = pwr_body[2] + 1;            // cavity depth
-    oh = id + pod_wall;              // overall height
-    ear_off = iw/2 + pod_wall + 6;   // matches shell ear holes
+    cw = pwr_cavity[0];
+    ch = pwr_cavity[1];
+    cd = pwr_cavity[2];
+    oh = cd + pwr_face_t;            // overall height (face on the bed)
+    ear_off = cw/2 + pod_wall + 6;   // matches shell ear holes
     difference() {
         union() {
             linear_extrude(oh) offset(3) offset(-3)
-                square([iw + 2*pod_wall, ih + 2*pod_wall], center = true);
+                square([cw + 2*pod_wall, ch + 2*pod_wall], center = true);
             // ears the shell screws into (flush with the open rim)
             for (s = [-1, 1]) translate([s*ear_off, 0, oh - 4])
                 linear_extrude(4) offset(2) offset(-2)
                     square([12, 10], center = true);
         }
-        // cavity
-        translate([0, 0, pod_wall]) linear_extrude(oh)
-            square([iw, ih], center = true);
-        // socket nose hole in the face
-        translate([0, 0, -eps]) cylinder(d = pwr_face_hole_d, h = pod_wall + 2*eps);
+        // cavity (socket body + snap wings + wires straight through)
+        translate([0, 0, pwr_face_t]) linear_extrude(oh)
+            square([cw, ch], center = true);
+        // snap-in rectangular cutout in the face, R-corners per drawing
+        translate([0, 0, -eps]) linear_extrude(pwr_face_t + 2*eps)
+            offset(pwr_snap_r) offset(-pwr_snap_r)
+                square([pwr_snap_w, pwr_snap_h], center = true);
         // ear screw pilots (M3 self-tap)
         for (s = [-1, 1]) translate([s*ear_off, 0, oh - 4 - eps])
             cylinder(d = 2.7, h = 4 + 2*eps);
@@ -322,8 +331,8 @@ module device() {
     color("#2a2f3a") translate([0, 0, slab_t]) rotate([180, 0, 0]) shell();
     if (pwr_pod)
         color("#2a2f3a") translate([0, -face_w/2 + pod_up, slab_t])
-            rotate([0, 180, 0])  // flange against the lid, face outward
-            translate([0, 0, -(pwr_body[2] + 1 + pod_wall)]) pod();
+            rotate([0, 180, 0])  // open rim against the lid, face outward
+            translate([0, 0, -(pwr_cavity[2] + pwr_face_t)]) pod();
 }
 
 module assembly() {

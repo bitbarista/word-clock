@@ -24,7 +24,8 @@ not started.**
 | 16×16 WS2812B flexible panel | 160×160 mm, 10 mm pitch — the common ~£12–15 one |
 | ESP32-S3 supermini | in stock; WiFi NTP + web UI + animations |
 | 5 V / 3 A USB-C supply | into the rear power breakout; see power budget below |
-| Panel-mount USB-C power socket (pigtail) | MUST be 5 V output (PD-trigger types: 5 V variant only); measure before printing shell + pod |
+| Snap-in USB-C power socket, 4P PD pigtail | CHT-TS023R style, 5 A; 2P variant won't work with C-to-C cables |
+| 2× 5.1 kΩ resistors | CC1/CC2 → GND if the socket's CC wires are unterminated |
 | 1000 µF electrolytic (≥6.3 V) | across 5 V/GND at the panel pigtail |
 | 330 Ω resistor | in the data line to DIN |
 | 3 mm foam sheet | behind the panel, pressed by the shell ribs |
@@ -73,16 +74,24 @@ for arbitrary animation frames. Two-layer solution:
    same time. (If your supermini has no diode — no ~0.3 V drop
    between USB VBUS and the 5 V pin — don't plug both in at once.)
 
-Socket notes — check the listing carefully:
-- **It must output 5 V.** A passthrough socket with 5.1 kΩ CC
-  pull-downs defaults to 5 V — good. A "PD trigger" module negotiates
-  a set voltage: only the 5 V variant is usable (9/12/20 V kills
-  WS2812s instantly). Verify with a multimeter before first
-  connection to the panel.
-- Without CC pull-downs a USB-C PSU only offers 0.5–1.5 A; "PD"
-  types handle this.
-- **Measure the socket before printing** and set `pwr_body` (w×h×d)
-  and `pwr_face_hole_d` in the Customizer — the defaults are guesses.
+Socket: **snap-in pigtail USB-C female, 4P PD/fast-charge variant**
+(NinthQua CHT-TS023R-H160-P4 style — engineering drawing in Carl's
+Downloads). The pod face is its mounting panel: 13.6 × 6.3 mm R1.3
+cutout in a 2.0 mm face; the socket snaps in from the outside, body
+and wires pass straight through into the enclosure. Rated 5 A.
+
+- **Buy the 4P (PD/fast-charge) variant, not the 2P.** The 2-wire
+  version has no CC pins, and a compliant USB-C supply won't enable
+  VBUS at all without CC termination (it only works on A-to-C
+  cables). The 4P version brings CC out; if the CC wires are
+  unterminated, fit **5.1 kΩ from each CC to GND** to request
+  5 V/3 A.
+- **It must present 5 V.** These passthrough sockets don't negotiate
+  voltage themselves, but verify with a multimeter before first
+  connection to the panel — 9/12/20 V kills WS2812s instantly.
+- Pod dimensions are taken from the CHT-TS023R drawing; if your
+  delivered part differs, adjust `pwr_snap_w/h/r`, `pwr_face_t`,
+  `pwr_cavity` in the Customizer.
 
 Supporting cast, standard WS2812 practice: **1000 µF electrolytic**
 across 5 V/GND at the panel pigtail (also stops the ESP32 browning
