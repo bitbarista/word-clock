@@ -23,7 +23,8 @@ not started.**
 |---|---|
 | 16×16 WS2812B flexible panel | 160×160 mm, 10 mm pitch — the common ~£12–15 one |
 | ESP32-S3 supermini | in stock; WiFi NTP + web UI + animations |
-| 5 V / 3 A USB-C supply | powers everything through the side port; see power budget below |
+| 5 V / 3 A USB-C supply | into the rear power breakout; see power budget below |
+| Panel-mount USB-C power breakout | RUNCCI-YUN style with 5.1 kΩ CC pull-downs; measure before printing shell |
 | 1000 µF electrolytic (≥6.3 V) | across 5 V/GND at the panel pigtail |
 | 330 Ω resistor | in the data line to DIN |
 | 3 mm foam sheet | behind the panel, pressed by the shell ribs |
@@ -51,16 +52,27 @@ A global brightness cap therefore does NOT guarantee a safe current
 for arbitrary animation frames. Two-layer solution:
 
 1. **Per-frame power limiting in firmware — mandatory.**
-   `FastLED.setMaxPowerInVoltsAndMilliamps(5, 1200)` scales each
+   `FastLED.setMaxPowerInVoltsAndMilliamps(5, 2500)` scales each
    frame so its computed power never exceeds the budget. Sparse word
    frames render at full set brightness; dense attract-mode frames
    dim themselves automatically. This is the guarantee — no animation
-   we ever add can exceed the budget.
-2. **Bypass the VBUS diode for headroom.** Measure USB VBUS vs the
-   5 V pin: a ~0.3 V drop means a Schottky (SS14-class, 1–2 A) is in
-   the path (some clones have none). If present, solder the panel's
-   5 V feed to the USB side of it (or jumper across). The budget can
-   then rise to ~2–2.5 A with a 5 V/3 A USB-C supply.
+   we ever add can exceed the budget (and it doubles as brown-out
+   protection for the shared 5 V rail).
+2. **Separate power inlet — panel current never touches the dev
+   board.** A panel-mount USB-C power breakout (RUNCCI-YUN style)
+   sits in the back of the shell, bottom-left, outside the stand's
+   span: its VBUS feeds the panel pigtail AND the ESP32 5 V pin
+   directly; grounds common. The supermini's own side USB-C becomes
+   flash/serial only — its VBUS diode now usefully isolates the two
+   sources, so a laptop and the power supply can be connected at the
+   same time. (If your supermini has no diode — no ~0.3 V drop
+   between USB VBUS and the 5 V pin — don't plug both in at once.)
+
+Breakout notes: pick one with 5.1 kΩ CC pull-downs (advertised as
+supporting 5 V/3 A supplies — most power breakouts have them; a bare
+socket without them gets only 0.5–1.5 A from a USB-C PSU). **Measure
+your breakout before printing the shell** and set `pwr_hole_space`,
+`pwr_slot_w/h` in the Customizer — sellers vary.
 
 Supporting cast, standard WS2812 practice: **1000 µF electrolytic**
 across 5 V/GND at the panel pigtail (also stops the ESP32 browning

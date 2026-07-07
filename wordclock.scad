@@ -62,6 +62,19 @@ usb_up = 28;
 // ESP32 supermini board size incl. fitting tolerance
 esp_l = 22.8;
 esp_w = 18.4;
+// panel-mount USB-C power breakout on the back (feeds panel + ESP32
+// directly; supermini USB-C stays flash-only).  MEASURE YOUR BOARD
+// before printing the shell — these dims are the typical RUNCCI-YUN
+// style and vary between sellers.
+pwr_breakout = true;
+// mounting hole centre-to-centre spacing
+pwr_hole_space = 18;
+// mounting screw pilot (M2.5 self-tap)
+pwr_hole_d = 2.4;
+pwr_boss_d = 6;
+// connector cutout width x height
+pwr_slot_w = 10;
+pwr_slot_h = 4.6;
 
 /* [Stand] */
 // backwards rake of the face
@@ -209,6 +222,13 @@ module shell() {
                 for (y = [-40, 40]) translate([0, y, 0])
                     linear_extrude(1.0) square([cells*pitch, 1.6], center = true);
             }
+            // power-breakout mounting bosses (device bottom-left,
+            // outside the stand's 120 mm span so the plug clears it)
+            if (pwr_breakout)
+                for (s = [-1, 1])
+                    translate([-usb_side*72 + s*pwr_hole_space/2,
+                               face_w/2 - usb_up, lid_t])
+                        cylinder(d = pwr_boss_d, h = 4);
             // ESP32 supermini cradle in the bottom corner, USB-C edge
             // against the side wall. NB the lid flips onto the tray,
             // so shell y is MIRRORED vs the assembled device: device
@@ -234,6 +254,19 @@ module shell() {
         // open the lip + relieve the lid rim where the USB-C passes
         translate([usb_side * (face_w/2 - 3.2), face_w/2 - usb_up, 7.2])
             cube([7.8, 16, 12], center = true);
+        if (pwr_breakout) {
+            // power socket cutout (rounded slot through the lid)
+            translate([-usb_side*72, face_w/2 - usb_up, -eps])
+                linear_extrude(lid_t + 2)
+                    hull() for (x = [-1, 1])
+                        translate([x*(pwr_slot_w - pwr_slot_h)/2, 0])
+                            circle(d = pwr_slot_h);
+            // boss pilot holes (blind — don't pierce the outer face)
+            for (s = [-1, 1])
+                translate([-usb_side*72 + s*pwr_hole_space/2,
+                           face_w/2 - usb_up, lid_t - 1])
+                    cylinder(d = pwr_hole_d, h = 5 + eps);
+        }
     }
 }
 
