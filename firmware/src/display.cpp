@@ -1,5 +1,6 @@
 #include "display.h"
 #include "animations.h"
+#include "usbguard.h"
 #include <time.h>
 #include <Preferences.h>
 
@@ -79,8 +80,22 @@ void getNowCells(CellSet& out) {
 
 String currentPhrase() { return timeValid() ? nowPhrase : String("INSERT COIN"); }
 
+static bool usbGuardActive = false;
+bool usbPowerLimited() { return usbGuardActive; }
+
 void applyPower() {
-    FastLED.setMaxPowerInVoltsAndMilliamps(5, constrain(cfg.powerMa, (uint16_t)300, (uint16_t)3000));
+    uint16_t budget = usbGuardActive ? min(cfg.powerMa, cfg.usbSafeMa) : cfg.powerMa;
+    FastLED.setMaxPowerInVoltsAndMilliamps(5, constrain(budget, (uint16_t)300, (uint16_t)3000));
+}
+
+// re-evaluate the USB guard every tick; only touches FastLED on a
+// genuine transition (plug/unplug), not every frame
+static void pollUsbGuard() {
+    bool present = usbHostPresent();
+    if (present != usbGuardActive) {
+        usbGuardActive = present;
+        applyPower();
+    }
 }
 
 // ---------- ambient pac ----------
@@ -139,6 +154,11 @@ static void refreshTimeWords() {
 // ---------- engine ----------
 void engineSetup() {
     FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_CELLS);
+    // safe-by-default: assume a host MIGHT be present until the first
+    // poll says otherwise, so even the boot animation can't overdraw
+    // through the programming port's diode
+    usbGuardActive = true;
+    pollUsbGuard();
     applyPower();
     FastLED.setBrightness(cfg.brightness);
     clearFrame();
@@ -171,6 +191,8 @@ static void doTransition(uint8_t style, const CellSet& oldSet, const CellSet& ne
 }
 
 void engineTick() {
+    pollUsbGuard();   // must run every tick, ahead of any early return below
+
     // periodic epoch save for power-loss recovery (every 5 min)
     if (timeValid() && millis() - lastEpochSave > 300000UL) {
         lastEpochSave = millis();

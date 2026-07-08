@@ -12,6 +12,7 @@ void configLoad() {
     cfg.nightFrom      = prefs.getUChar ("nFrom", cfg.nightFrom);
     cfg.nightTo        = prefs.getUChar ("nTo",   cfg.nightTo);
     cfg.powerMa        = prefs.getUShort("pwr",   cfg.powerMa);
+    cfg.usbSafeMa      = prefs.getUShort("usbMa", cfg.usbSafeMa);
     cfg.theme          = prefs.getUChar ("thm",   cfg.theme);
     cfg.timeColor      = prefs.getULong ("tCol",  cfg.timeColor);
     cfg.accentColor    = prefs.getULong ("aCol",  cfg.accentColor);
@@ -38,6 +39,7 @@ void configSave() {
     prefs.putUChar ("nFrom", cfg.nightFrom);
     prefs.putUChar ("nTo",   cfg.nightTo);
     prefs.putUShort("pwr",   cfg.powerMa);
+    prefs.putUShort("usbMa", cfg.usbSafeMa);
     prefs.putUChar ("thm",   cfg.theme);
     prefs.putULong ("tCol",  cfg.timeColor);
     prefs.putULong ("aCol",  cfg.accentColor);

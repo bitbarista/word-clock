@@ -53,8 +53,11 @@ button.acc{border-color:var(--amber);color:var(--amber)}
 .ok{color:var(--green)} .warn{color:var(--amber)}
 progress{width:100%;accent-color:var(--amber)}
 .sub{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px}
+.banner{display:none;background:#2a2010;border-bottom:1px solid var(--amber);color:var(--amber);
+font-size:13px;text-align:center;padding:8px 14px}
 </style></head><body>
 <header><h1>TIME INVADERS</h1><span class="st" id="hstat">…</span></header>
+<div class="banner" id="usbbanner">&#9888; Programming port connected — LED current limited for safety</div>
 <main>
 
 <div class="card">
@@ -165,6 +168,11 @@ progress{width:100%;accent-color:var(--amber)}
   <div class="hint">Test: red = top-left, green = top-right, blue = bottom-left.</div>
   <div class="row sub"><label>Power budget (mA)</label>
     <input type="number" id="powerMa" min="300" max="3000" step="100" style="width:90px"></div>
+  <div class="row"><label class="hint">Safe budget while flashing (mA)</label>
+    <input type="number" id="usbSafeMa" min="200" max="900" step="50" style="width:90px"></div>
+  <div class="hint">Auto-clamps to the safe budget whenever the programming port has
+    a computer attached — its onboard diode isn't rated for full panel current
+    and a laptop port can't source it anyway.</div>
 </div>
 
 <div class="card"><h2>System</h2>
@@ -213,7 +221,7 @@ saveCfg({theme:i,timeColor:t[1],accentColor:t[2]});}else saveCfg({theme:i});};
 $('themes').appendChild(c);});
 
 async function loadCfg(){cfg=await(await fetch('/api/config')).json();
-for(const k of ['brightness','nightBright','nightFrom','nightTo','attractMin','wordsMin','powerMa'])
+for(const k of ['brightness','nightBright','nightFrom','nightTo','attractMin','wordsMin','powerMa','usbSafeMa'])
 $(k).value=cfg[k];
 $('attractMinV').textContent=cfg.attractMin;$('wordsMinV').textContent=cfg.wordsMin;
 for(const k of ['nightEnabled','animsEnabled','attractEnabled','wordsEnabled','pacAmbient','mapSerp','mapFlip'])
@@ -231,6 +239,7 @@ bindRange('attractMin','attractMin','attractMinV');bindRange('wordsMin','wordsMi
 $('nightFrom').addEventListener('change',e=>saveCfg({nightFrom:+e.target.value}));
 $('nightTo').addEventListener('change',e=>saveCfg({nightTo:+e.target.value}));
 $('powerMa').addEventListener('change',e=>saveCfg({powerMa:+e.target.value}));
+$('usbSafeMa').addEventListener('change',e=>saveCfg({usbSafeMa:+e.target.value}));
 bindSw('nightEnabled','nightEnabled');bindSw('animsEnabled','animsEnabled');
 bindSw('attractEnabled','attractEnabled');bindSw('wordsEnabled','wordsEnabled');
 bindSw('pacAmbient','pacAmbient');bindSw('mapSerp','mapSerp');bindSw('mapFlip','mapFlip');
@@ -277,7 +286,8 @@ $('hstat').textContent=`${s.time} · ${s.ip}`;
 $('phrase').textContent=s.phrase;
 $('netinfo').innerHTML=s.ap?'<span class="warn">Access-point mode — join a WiFi below for auto time.</span>'
 :`Connected · ${s.ip} · ${s.rssi} dBm`;
-$('fwline').textContent=`Firmware v${s.fw} · ${s.host}.local`;}catch(e){}}
+$('fwline').textContent=`Firmware v${s.fw} · ${s.host}.local`;
+$('usbbanner').style.display=s.usbLimited?'block':'none';}catch(e){}}
 setInterval(preview,1000);setInterval(status,3000);
 loadCfg();status();preview();
 </script>

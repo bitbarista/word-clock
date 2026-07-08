@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define FW_VERSION "0.2.0"
+#define FW_VERSION "0.3.0"
 
 enum TransStyle : uint8_t {
     TR_RANDOM = 0, TR_PAC, TR_MATRIX, TR_CANNON, TR_INVADER, TR_TETRIS, TR_FADE,
@@ -20,7 +20,9 @@ struct Config {
     uint8_t  nightBright = 25;
     uint8_t  nightFrom   = 22;
     uint8_t  nightTo     = 7;
-    uint16_t powerMa     = 2500;   // FastLED per-frame power budget
+    uint16_t powerMa     = 2500;   // FastLED per-frame power budget (pod-powered)
+    uint16_t usbSafeMa   = 400;    // budget clamp while a USB host is on the
+                                    // programming port — see usbguard.h for why
     // theme / colours
     uint8_t  theme       = 0;      // 0 arcade 1 matrix 2 amber 3 ice 4 custom
     uint32_t timeColor   = 0xFFFFFF;

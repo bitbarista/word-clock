@@ -11,6 +11,8 @@ uint16_t cellToLed(uint16_t cell);
 void engineSetup();
 void engineTick();          // call from loop()
 void applyPower();          // re-apply brightness/power budget
+bool usbPowerLimited();     // true while the programming-port USB
+                            // guard has clamped the power budget
 
 String currentPhrase();     // "IT IS TWENTY FIVE PAST TEN"
 

@@ -43,6 +43,7 @@ static void handleStatus(AsyncWebServerRequest* req) {
     doc["rssi"]    = netIsAP() ? 0 : WiFi.RSSI();
     doc["host"]    = cfg.hostname;
     doc["fw"]      = FW_VERSION;
+    doc["usbLimited"] = usbPowerLimited();
     sendJson(req, doc);
 }
 
@@ -54,6 +55,7 @@ static void handleGetConfig(AsyncWebServerRequest* req) {
     doc["nightFrom"]   = cfg.nightFrom;
     doc["nightTo"]     = cfg.nightTo;
     doc["powerMa"]     = cfg.powerMa;
+    doc["usbSafeMa"]   = cfg.usbSafeMa;
     doc["theme"]       = cfg.theme;
     doc["timeColor"]   = colHex(cfg.timeColor);
     doc["accentColor"] = colHex(cfg.accentColor);
@@ -79,6 +81,7 @@ static void applyConfigJson(JsonDocument& doc) {
     if (doc["nightFrom"].is<int>())    cfg.nightFrom   = doc["nightFrom"];
     if (doc["nightTo"].is<int>())      cfg.nightTo     = doc["nightTo"];
     if (doc["powerMa"].is<int>())    { cfg.powerMa     = doc["powerMa"]; applyPower(); }
+    if (doc["usbSafeMa"].is<int>()) { cfg.usbSafeMa   = doc["usbSafeMa"]; applyPower(); }
     if (doc["theme"].is<int>())        cfg.theme       = doc["theme"];
     if (doc["timeColor"].is<const char*>())   cfg.timeColor   = hexCol(doc["timeColor"]);
     if (doc["accentColor"].is<const char*>()) cfg.accentColor = hexCol(doc["accentColor"]);
