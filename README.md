@@ -143,6 +143,17 @@ brightness. When you've picked, set `t_diff` to the winner and print
 the full-size `diffuser` — the lattice depth derives from `t_diff`,
 so print the lattice after the decision.
 
+**Fit note (v0.1.x reprint):** the first `lattice`/`diffuser` export
+only left ~0.2 mm clearance per side against the faceplate's fixed
+161 mm opening — too tight once FDM dimensional error and elephant
+foot are accounted for, and it wouldn't seat. Both are now sized off
+a `fit_clr` parameter (default 0.4 mm/side), and the lattice also
+shaves an extra 0.3 mm off the outer frame for its first 0.6 mm
+(elephant-foot relief) so a flared first layer can't bind the fit
+either. This only touches `lattice`/`diffuser`/`coupon_diffuser` —
+**the faceplate's opening itself is unchanged**, so an already-printed
+faceplate is still correct; just reprint the two drop-in parts.
+
 The font is a purpose-made 5×7 pixel stencil face (`font.scad`):
 letters with enclosed counters (A B D O P Q R) carry a bridge, so the
 stencil plate is self-supporting and nothing floats on the bed.

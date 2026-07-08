@@ -44,6 +44,10 @@ bezel = 12;
 font_px = 1.1;
 // face corner radius
 corner_r = 3;
+// per-side clearance for drop-in parts (lattice, diffuser) — FDM
+// dimensional error + elephant-foot easily eats 0.2mm; this is
+// clearance per EDGE, so the part shrinks by 2x this all round
+fit_clr = 0.4;
 
 /* [Body] */
 // tray perimeter wall thickness
@@ -211,22 +215,35 @@ module faceplate() face_core(cells, GRID, face_w);
 // settle on a different diffuser thickness, reprint to match.
 module lattice() {
     gs = cells * pitch;
-    ow = gs + 0.6;                    // opening is gs+1, 0.2/side play
+    // faceplate opening is gs+1 (fixed — already printed); shrink the
+    // lattice to fit inside it with fit_clr clearance per edge
+    ow = gs + 1 - 2*fit_clr;
     ld = baffle_d - t_diff;
-    linear_extrude(ld) {
-        difference() { square(ow, center = true);
-                       square(ow - 2*lat_wall, center = true); }
-        for (k = [0:cells]) {
-            translate([-gs/2 + k*pitch, 0]) square([lat_wall, ow], center = true);
-            translate([0, -gs/2 + k*pitch]) square([ow, lat_wall], center = true);
+    difference() {
+        linear_extrude(ld) {
+            difference() { square(ow, center = true);
+                           square(ow - 2*lat_wall, center = true); }
+            for (k = [0:cells]) {
+                translate([-gs/2 + k*pitch, 0]) square([lat_wall, ow], center = true);
+                translate([0, -gs/2 + k*pitch]) square([ow, lat_wall], center = true);
+            }
         }
+        // elephant-foot relief: shave the first 0.6mm of the OUTER
+        // frame by an extra 0.3mm/side so first-layer squish can't
+        // bind the fit even before any slicer tuning
+        translate([0, 0, -eps]) linear_extrude(0.6 + eps)
+            difference() {
+                square(ow + 1, center = true);
+                square(ow - 0.6, center = true);
+            }
     }
 }
 
 // diffuser sheet: the experiment. Print at t_diff in clear or white
 // (0.6 / 0.9 / 1.2 are worth comparing), 100% infill.
 module diffuser() {
-    linear_extrude(t_diff) square(cells*pitch + 0.4, center = true);
+    gs = cells * pitch;
+    linear_extrude(t_diff) square(gs + 1 - 2*fit_clr, center = true);
 }
 
 // ----------------------------------------------------------------
@@ -235,7 +252,7 @@ module diffuser() {
 // ----------------------------------------------------------------
 coupon_n = 4;
 coupon_fw = coupon_n*pitch + 8;
-coupon_slot = 1.5;   // slot height: takes diffuser strips up to 1.3
+coupon_slot = 1.2 + 2*fit_clr;   // fits the tallest planned test strip (1.2mm)
 
 module coupon() {
     gs = coupon_n * pitch;
@@ -262,7 +279,7 @@ module coupon() {
 
 // test strip for the coupon slot: sized to slide, with a pull tab
 module coupon_diffuser() {
-    w = coupon_n*pitch + 0.4;
+    w = coupon_n*pitch + 1 - 2*fit_clr;   // matches coupon's op = gs+1
     linear_extrude(t_diff) {
         square(w, center = true);
         translate([0, -w/2 - 4]) square([12, 9], center = true);
