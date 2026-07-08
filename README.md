@@ -75,9 +75,10 @@ for arbitrary animation frames. Two-layer solution:
    between USB VBUS and the 5 V pin — don't plug both in at once.)
 
 Socket: **snap-in pigtail USB-C female, 4P PD/fast-charge variant**.
-The pod face is its mounting panel: **15.0 × 5.4 mm R1.3 cutout in a
-2.0 mm face** (measured off the actual delivered part — supersedes
-the earlier CHT-TS023R drawing estimate), its long axis aligned with
+The pod face is its mounting panel: **14.7 × 5.4 mm R1.3 cutout in a
+2.0 mm face** (measured off the actual delivered part, long side
+trimmed 0.3 mm after a test fit — supersedes the earlier CHT-TS023R
+drawing estimate), its long axis aligned with
 the two mounting ears; the socket snaps in from the outside, body and
 wires pass straight through into the enclosure. Total pod height is
 10.0 mm.

@@ -77,7 +77,7 @@ esp_w = 18.4;
 // spread to ~16 behind a ~2 mm panel.
 pwr_pod = true;
 // snap-in cutout in the pod face
-pwr_snap_w = 15.0;
+pwr_snap_w = 14.7;
 pwr_snap_h = 5.4;
 pwr_snap_r = 1.3;
 // pod face (= panel the socket snaps onto) thickness
