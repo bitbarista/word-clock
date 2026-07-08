@@ -107,6 +107,70 @@ The back panel is deliberately clean; if you ever outgrow USB-C power
 entirely, add a cable exit in `shell()` and feed the pigtail from a
 dedicated 5 V PSU.
 
+### Complete Circuit Schematic
+
+```
++=========================================================================+
+|                   TIME INVADERS -- Circuit Schematic                    |
++=========================================================================+
+
+POWER
+
+  USB-C Power Pod (snap-in, 4P fast-charge/PD pigtail)
+  +-------------+
+  |  V+         |----------------------------------------------- 5V RAIL
+  |  V-         |----------------------------------------------- GND RAIL
+  |  CC1        |--[ R1 5.1k ]--+
+  |  CC2        |--[ R2 5.1k ]--+-------------------------------- GND RAIL
+  +-------------+
+
+  R1/R2 request 5V/3A from the supply. Omit them if the socket
+  already has CC resistors built in (only V+/V- emerge in that case).
+
+  ESP32-S3 SuperMini
+  5V RAIL  ------------------------------------------------------ 5V pin
+  GND RAIL ------------------------------------------------------ GND pin
+
+
+  ESP32-S3's OWN programming USB-C (side of case, flashing only)
+
+    USB-C connector
+     VBUS ----------[ onboard Schottky ]---------------------- 5V RAIL
+     GND  ------------------------------------------------------ GND RAIL
+
+  This diode blocks GND RAIL -> VBUS backfeed, but NOT the reverse:
+  if a laptop's VBUS sits above the pod's output, the laptop can end
+  up sourcing panel current through this small onboard diode. The
+  firmware's USB power guard detects a host on this port (via USB
+  enumeration) and automatically clamps LED current to a safe budget
+  while it's connected -- no extra wiring, but don't rely on the
+  diode alone.
+
+
+LED PANEL (16x16 WS2812B, 160x160mm, 256 LEDs)
+
+  5V RAIL  --+----------------------------------------------------- Panel VCC
+             |
+         [ C1 1000uF ]
+             |
+  GND RAIL --+----------------------------------------------------- Panel GND
+
+  ESP32-S3                                            Panel
+  GPIO4 -----[ R3 330R ]----------------------------- DIN
+
+  GPIO4 is a build flag (LED_PIN in platformio.ini) -- change there,
+  not here, if your wiring differs. Optional: insert a 74AHCT125
+  level shifter between R3 and DIN if 3.3V data proves unreliable
+  driving the panel from 5V.
+
+
+All GND labels share a common ground.
+All 5V RAIL labels are the same net: fed primarily by the power pod
+(V+/V- direct, no diode), and -- only while a host is enumerated on
+the programming port -- additionally by that port's VBUS through the
+onboard diode (current-limited in firmware when this happens).
+```
+
 ## Printed parts
 
 Every part is a plain single-colour print — no filament swaps.
