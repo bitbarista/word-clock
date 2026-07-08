@@ -220,13 +220,20 @@ module lattice() {
     ow = gs + 1 - 2*fit_clr;
     ld = baffle_d - t_diff;
     difference() {
-        linear_extrude(ld) {
-            difference() { square(ow, center = true);
-                           square(ow - 2*lat_wall, center = true); }
-            for (k = [0:cells]) {
-                translate([-gs/2 + k*pitch, 0]) square([lat_wall, ow], center = true);
-                translate([0, -gs/2 + k*pitch]) square([ow, lat_wall], center = true);
+        // clip the whole cross-section to ow: the outermost crossbars
+        // sit AT the LED-grid edge (gs/2) and are lat_wall wide, so
+        // uncapped they overshoot to gs+lat_wall (161.2mm) regardless
+        // of ow — that overshoot, not the frame, was the real fit bug
+        linear_extrude(ld) intersection() {
+            union() {
+                difference() { square(ow, center = true);
+                               square(ow - 2*lat_wall, center = true); }
+                for (k = [0:cells]) {
+                    translate([-gs/2 + k*pitch, 0]) square([lat_wall, ow], center = true);
+                    translate([0, -gs/2 + k*pitch]) square([ow, lat_wall], center = true);
+                }
             }
+            square(ow, center = true);
         }
         // elephant-foot relief: shave the first 0.6mm of the OUTER
         // frame by an extra 0.3mm/side so first-layer squish can't

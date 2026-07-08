@@ -143,16 +143,26 @@ brightness. When you've picked, set `t_diff` to the winner and print
 the full-size `diffuser` — the lattice depth derives from `t_diff`,
 so print the lattice after the decision.
 
-**Fit note (v0.1.x reprint):** the first `lattice`/`diffuser` export
-only left ~0.2 mm clearance per side against the faceplate's fixed
-161 mm opening — too tight once FDM dimensional error and elephant
-foot are accounted for, and it wouldn't seat. Both are now sized off
-a `fit_clr` parameter (default 0.4 mm/side), and the lattice also
-shaves an extra 0.3 mm off the outer frame for its first 0.6 mm
-(elephant-foot relief) so a flared first layer can't bind the fit
-either. This only touches `lattice`/`diffuser`/`coupon_diffuser` —
-**the faceplate's opening itself is unchanged**, so an already-printed
-faceplate is still correct; just reprint the two drop-in parts.
+**Fit note (v0.1.x reprint):** the first `lattice` export didn't
+actually fit the printed faceplate. Root cause took two passes to
+find — the frame's outer square (`ow`) was sized correctly, but the
+per-cell crossbars are drawn independently at each LED-grid line, and
+the outermost crossbar sits centred exactly on the grid edge
+(`gs/2`), so its own width pushes it out to `gs/2 + lat_wall/2`
+regardless of `ow`. That overshoot (161.2 mm total), not the frame,
+was the part's real widest feature — so the first attempt to add
+clearance by shrinking `ow` changed nothing measurable, because the
+crossbars were never bounded by it. Fixed by clipping the whole
+cross-section (frame + crossbars) to `ow` before extruding, so `ow`
+is now genuinely the outer limit. Confirmed by measuring the actual
+STL bounding box (160.2 mm, i.e. 0.4 mm/side against the fixed
+161 mm opening), not just by reasoning about the code.
+`fit_clr` (0.4 mm/side default) sizes `lattice`/`diffuser`/
+`coupon_diffuser`; the lattice also shaves an extra 0.3 mm off the
+outer frame for its first 0.6 mm (elephant-foot relief). This only
+touches those three parts — **the faceplate's opening itself is
+unchanged**, so an already-printed faceplate is still correct; just
+reprint the lattice (and diffuser, if already printed).
 
 The font is a purpose-made 5×7 pixel stencil face (`font.scad`):
 letters with enclosed counters (A B D O P Q R) carry a bridge, so the
