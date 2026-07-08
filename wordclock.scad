@@ -77,13 +77,15 @@ esp_w = 18.4;
 // spread to ~16 behind a ~2 mm panel.
 pwr_pod = true;
 // snap-in cutout in the pod face
-pwr_snap_w = 13.6;
-pwr_snap_h = 6.3;
+pwr_snap_w = 5.4;
+pwr_snap_h = 15.0;
 pwr_snap_r = 1.3;
 // pod face (= panel the socket snaps onto) thickness
 pwr_face_t = 2.0;
 // interior cavity: body + wing deployment + wire pass-through
-pwr_cavity = [18, 9, 13];
+// (w,h keep a similar clearance margin around the cutout as before;
+// depth set so cavity + pwr_face_t = 10.0mm total pod height)
+pwr_cavity = [10, 18, 8];
 // pod centre height above the bottom face edge (keep pod + plug
 // clear of the 34 mm stand horn)
 pod_up = 48;
