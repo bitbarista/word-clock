@@ -1,0 +1,1012 @@
+<title>TIME INVADERS — Firmware Simulator</title>
+<style>
+  :root{
+    --bg:#eceef2; --ink:#1b1e26; --muted:#5b6170; --card:#f8f9fb; --line:#d5d9e2;
+    --accent:#a86e00; --accent-glow:#ffb300;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#12141a; --ink:#e8eaf0; --muted:#9aa1b2; --card:#191c24; --line:#2a2e3a; --accent:#ffb300; }
+  }
+  :root[data-theme="dark"]{ --bg:#12141a; --ink:#e8eaf0; --muted:#9aa1b2; --card:#191c24; --line:#2a2e3a; --accent:#ffb300; }
+  :root[data-theme="light"]{ --bg:#eceef2; --ink:#1b1e26; --muted:#5b6170; --card:#f8f9fb; --line:#d5d9e2; --accent:#a86e00; }
+
+  *{box-sizing:border-box}
+  body{ background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; margin:0; padding:32px 20px 64px; }
+  .wrap{max-width:1120px; margin:0 auto}
+  .eyebrow{ font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace; font-size:12px; letter-spacing:.18em; color:var(--accent); text-transform:uppercase; margin:0 0 10px; }
+  h1{ font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace; font-size:clamp(24px,4vw,34px); line-height:1.15; margin:0 0 12px; text-wrap:balance; letter-spacing:-.01em; }
+  .lede{ color:var(--muted); max-width:66ch; margin:0 0 22px; }
+  .lede strong{color:var(--ink)}
+
+  /* ---- sim-only control strip ---- */
+  .simbar{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:12px 14px;
+    background:var(--card); border:1px solid var(--line); border-radius:12px; margin-bottom:28px; }
+  .simbar-label{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted); margin-right:4px; }
+  .simbar button{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; padding:7px 12px;
+    border-radius:999px; border:1px solid var(--line); background:transparent; color:var(--ink); cursor:pointer; }
+  .simbar button:hover{border-color:var(--accent)}
+  .simbar button:active{transform:translateY(1px)}
+  .simbar label{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; display:flex; gap:6px;
+    align-items:center; color:var(--muted); cursor:pointer; margin-left:auto; }
+  .simbar input[type=checkbox]{accent-color:var(--accent-glow)}
+  .simclock{ font-variant-numeric:tabular-nums; color:var(--ink); }
+
+  /* ---- stage: device + phone side by side ---- */
+  .stage{ display:flex; flex-wrap:wrap; gap:36px; align-items:flex-start; justify-content:center; margin-bottom:36px; }
+  .col-label{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--muted); text-align:center; margin:0 0 14px; }
+
+  /* ------- the LED face (subtle-wedge shell — the shipped concept) ------- */
+  .device-col{ flex:0 0 auto; width:min(380px,92vw); }
+  .face-wrap{ container-type:inline-size; width:100%; }
+  .face{ display:grid; grid-template-columns:repeat(16,1fr); aspect-ratio:1; background:#07080b;
+    border-radius:6px; padding:3.5%; box-shadow:inset 0 0 30px rgba(0,0,0,.9); }
+  .cell{ display:grid; place-items:center; font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;
+    font-weight:700; font-size:3.6cqi; line-height:1; color:rgba(235,240,255,.13);
+    transition:color .15s ease, text-shadow .15s ease; user-select:none; }
+  .wedge{ width:100%; display:flex; flex-direction:column; align-items:center; }
+  .frame{ width:100%; background:linear-gradient(180deg,#171a22,#101218); border-radius:16px; padding:16px;
+    box-shadow:0 18px 40px rgba(0,0,0,.3); }
+  .stand{ width:52%; height:22px; background:linear-gradient(180deg,#14161c,#0e1015);
+    clip-path:polygon(7% 0,93% 0,100% 100%,0 100%); margin-top:-2px; border-radius:0 0 6px 6px; }
+  .phraseline{ margin-top:14px; text-align:center; font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:13px; letter-spacing:.06em; color:var(--muted); min-height:18px; }
+
+  /* ------- phone frame (chrome around the real mobile UI) ------- */
+  .phone-col{ flex:0 0 auto; }
+  .phone-shell{ width:360px; max-width:92vw; background:linear-gradient(165deg,#2a2e38,#14161c);
+    border-radius:40px; padding:14px; box-shadow:0 24px 50px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.04); }
+  .phone-notch{ height:22px; display:flex; align-items:center; justify-content:center; }
+  .phone-notch::before{ content:""; width:70px; height:6px; border-radius:4px; background:#0b0c10; }
+  .phone-screen-wrap{ height:680px; max-height:76vh; border-radius:26px; overflow:hidden;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.06); }
+
+  /* prose / footnotes */
+  section.prose{ max-width:72ch; margin:0 auto 20px; }
+  section.prose h3{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); margin:0 0 10px; }
+  section.prose p{ margin:0 0 12px; color:var(--muted); }
+  section.prose p strong{ color:var(--ink); }
+  section.prose code{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.92em; color:var(--ink);
+    background:var(--card); border:1px solid var(--line); border-radius:4px; padding:.1em .35em; }
+
+  /* =================================================================
+     Everything under .ti-phone is the REAL mobile control UI, ported
+     from firmware/src/webui.h. Selectors are prefixed with .ti-phone
+     so its styling can't leak into (or be leaked into by) the page
+     chrome above. Colours/tokens/layout are otherwise verbatim.
+     ================================================================= */
+  .ti-phone{
+    --bg:#0d0f14; --card:#161a22; --line:#262c38; --ink:#e8ecf4; --mut:#8b93a5;
+    --amber:#ffb300; --green:#4be15f; --red:#ff4d4d; --cyan:#4dd9ff; --r:14px;
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.5 ui-monospace,'Cascadia Mono',Menlo,Consolas,monospace;
+    height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  }
+  .ti-phone, .ti-phone *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  .ti-phone header{ position:sticky; top:0; z-index:5; background:#0d0f14ee; backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line); padding:14px 16px; display:flex; align-items:baseline; gap:10px; }
+  .ti-phone header h1{ margin:0; font-size:17px; letter-spacing:.22em; color:var(--amber);
+    text-shadow:0 0 12px #ffb30055; }
+  .ti-phone header .st{ margin-left:auto; font-size:12px; color:var(--mut); }
+  .ti-phone main{ max-width:560px; margin:0 auto; padding:14px 14px 60px; display:flex; flex-direction:column; gap:14px; }
+  .ti-phone .card{ background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; }
+  .ti-phone .card h2{ margin:0 0 10px; font-size:12px; letter-spacing:.18em; color:var(--mut); text-transform:uppercase; }
+  .ti-phone .row{ display:flex; align-items:center; gap:12px; padding:7px 0; min-height:36px; }
+  .ti-phone .row label:not(.sw){ flex:1; }
+  .ti-phone .row .hint{ font-size:12px; color:var(--mut); }
+  .ti-phone input[type=range]{ flex:1.2; accent-color:var(--amber); min-width:110px; }
+  .ti-phone select, .ti-phone input[type=text], .ti-phone input[type=password], .ti-phone input[type=number]{
+    background:#0d0f14; color:var(--ink); border:1px solid var(--line); border-radius:8px;
+    padding:8px 10px; font:inherit; max-width:100%; }
+  /* flex items don't shrink below their content's intrinsic width by
+     default (min-width:auto) — without this, two inputs sharing a
+     .row (SSID/password, file-picker/Update) overflow the card
+     instead of sharing the available space */
+  .ti-phone .row input[type=text], .ti-phone .row input[type=password], .ti-phone .row input[type=file]{
+    min-width:0; }
+  .ti-phone select{ min-width:130px; }
+  .ti-phone input[type=color]{ width:42px; height:30px; border:1px solid var(--line); border-radius:8px;
+    background:none; padding:2px; }
+  .ti-phone .sw{ position:relative; width:46px; height:26px; flex:none; }
+  .ti-phone .sw input{ opacity:0; width:0; height:0; }
+  .ti-phone .sw i{ position:absolute; inset:0; background:#2a3040; border-radius:26px; transition:.2s; cursor:pointer; }
+  .ti-phone .sw i:before{ content:""; position:absolute; width:20px; height:20px; left:3px; top:3px;
+    background:#8b93a5; border-radius:50%; transition:.2s; }
+  .ti-phone .sw input:checked+i{ background:var(--amber); }
+  .ti-phone .sw input:checked+i:before{ transform:translateX(20px); background:#0d0f14; }
+  .ti-phone button{ background:#20263252; border:1px solid var(--line); color:var(--ink); border-radius:10px;
+    padding:9px 13px; font:inherit; font-size:13px; cursor:pointer; }
+  .ti-phone button:active{ transform:translateY(1px); }
+  .ti-phone button.acc{ border-color:var(--amber); color:var(--amber); }
+  .ti-phone .btns{ display:flex; flex-wrap:wrap; gap:8px; padding-top:4px; }
+  .ti-phone .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .ti-phone .chip{ border:1px solid var(--line); border-radius:999px; padding:7px 14px; font-size:13px; cursor:pointer; }
+  .ti-phone .chip.on{ border-color:var(--amber); color:var(--amber); box-shadow:0 0 10px #ffb30033; }
+  .ti-phone #cv{ width:100%; image-rendering:pixelated; border-radius:10px; background:#07080b; display:block; }
+  .ti-phone #phrase{ text-align:center; color:var(--mut); font-size:13px; letter-spacing:.08em; padding-top:8px; min-height:20px; }
+  .ti-phone .nets{ display:flex; flex-direction:column; gap:6px; padding:6px 0; }
+  .ti-phone .nets button{ text-align:left; display:flex; justify-content:space-between; }
+  .ti-phone .ok{ color:var(--green); } .ti-phone .warn{ color:var(--amber); }
+  .ti-phone progress{ width:100%; accent-color:var(--amber); }
+  .ti-phone .sub{ border-top:1px dashed var(--line); margin-top:8px; padding-top:8px; }
+  .ti-phone .banner{ display:none; background:#2a2010; border-bottom:1px solid var(--amber); color:var(--amber);
+    font-size:13px; text-align:center; padding:8px 14px; }
+  .ti-phone .simtag{ font-size:11px; color:var(--mut); font-style:italic; }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Firmware simulator · grid.cpp + display.cpp + animations.cpp + webui.h ported to JS</p>
+  <h1>TIME INVADERS, running in a tab</h1>
+  <p class="lede">The word logic, transitions, attract shows and the mobile control UI below are ported
+    line-for-line from the real ESP32 firmware — <strong>not a mockup</strong>. Both panels share one
+    simulated frame buffer, exactly like the real board sharing LEDs between the engine and the web
+    UI's live preview. Good for previewing wording and animations while the actual print finishes.</p>
+
+  <div class="simbar">
+    <span class="simbar-label">Simulator only</span>
+    <span class="simclock" id="simClockLabel">--:--</span>
+    <button data-jump="1">+1 min</button>
+    <button data-jump="5">+5 min</button>
+    <button data-jump="60">+1 hr</button>
+    <button id="simResetTime">Back to now</button>
+    <button id="simBootBtn">Replay boot</button>
+    <label><input type="checkbox" id="simUsb"> flashing cable plugged in</label>
+  </div>
+
+  <div class="stage">
+    <div class="device-col">
+      <p class="col-label">The clock (shell B — subtle)</p>
+      <div class="wedge">
+        <div class="frame"><div class="face-wrap"><div class="face" id="face"></div></div></div>
+        <div class="stand"></div>
+      </div>
+      <div class="phraseline" id="phraseBig"></div>
+    </div>
+
+    <div class="phone-col">
+      <p class="col-label">The web UI (real firmware page)</p>
+      <div class="phone-shell">
+        <div class="phone-notch"></div>
+        <div class="phone-screen-wrap">
+          <div class="ti-phone" id="tiPhone">
+            <div class="banner" id="usbbanner">&#9888; Programming port connected — LED current limited for safety</div>
+            <header><h1>TIME INVADERS</h1><span class="st" id="hstat">…</span></header>
+            <main>
+
+            <div class="card">
+              <canvas id="cv" width="160" height="160"></canvas>
+              <div id="phrase"></div>
+            </div>
+
+            <div class="card"><h2>Display</h2>
+              <div class="row"><label>Brightness</label>
+                <input type="range" id="brightness" min="10" max="255"></div>
+              <div class="row"><label>Night dimming</label>
+                <label class="sw"><input type="checkbox" id="nightEnabled"><i></i></label></div>
+              <div class="row" data-night><label class="hint">Night brightness</label>
+                <input type="range" id="nightBright" min="2" max="120"></div>
+              <div class="row" data-night><label class="hint">From / to (hour)</label>
+                <input type="number" id="nightFrom" min="0" max="23" style="width:64px">
+                <input type="number" id="nightTo" min="0" max="23" style="width:64px"></div>
+            </div>
+
+            <div class="card"><h2>Theme</h2>
+              <div class="chips" id="themes"></div>
+              <div class="row" style="padding-top:12px"><label>Time colour</label>
+                <input type="color" id="timeColor"></div>
+              <div class="row"><label>Accent colour</label>
+                <input type="color" id="accentColor"></div>
+            </div>
+
+            <div class="card"><h2>Animations</h2>
+              <div class="row"><label>Arcade animations</label>
+                <label class="sw"><input type="checkbox" id="animsEnabled"><i></i></label></div>
+              <div class="row"><label>Time-change style</label>
+                <select id="transStyle">
+                  <option value="0">Random</option><option value="1">Pac-Man eats it</option>
+                  <option value="2">Matrix rain</option><option value="3">Cannon shoot-up</option>
+                  <option value="4">Invader zap</option><option value="5">Tetris drop</option>
+                  <option value="6">Gentle fade</option>
+                </select></div>
+              <div class="hint">Big animations run on 5-minute changes; single minutes crossfade. Use the
+                simulator's +1 min / +5 min buttons above to preview both without waiting.</div>
+              <div class="row"><label>Attract mode</label>
+                <label class="sw"><input type="checkbox" id="attractEnabled"><i></i></label></div>
+              <div class="row"><label class="hint">Every <b id="attractMinV"></b> min</label>
+                <input type="range" id="attractMin" min="5" max="120" step="5"></div>
+              <div class="btns">
+                <button onclick="act('attract',1)">&#9608; Invaders</button>
+                <button onclick="act('attract',2)">&#9608; Ghosts</button>
+                <button onclick="act('attract',3)">&#9608; Pac chase</button>
+                <button onclick="act('attract',4)">&#9608; Cannon duel</button>
+                <button onclick="act('attract',5)">&#9608; Matrix</button>
+                <button onclick="act('attract',6)">&#9608; Insert coin</button>
+                <button class="acc" onclick="act('transition',-1)">&#9654; Play transition</button>
+              </div>
+            </div>
+
+            <div class="card"><h2>Hidden arcade words</h2>
+              <div class="row"><label>Word glints</label>
+                <label class="sw"><input type="checkbox" id="wordsEnabled"><i></i></label></div>
+              <div class="row"><label class="hint">Every <b id="wordsMinV"></b> min</label>
+                <input type="range" id="wordsMin" min="2" max="60"></div>
+              <div class="btns"><button onclick="act('words',-1)">&#10024; Glint now</button></div>
+            </div>
+
+            <div class="card"><h2>Ambient</h2>
+              <div class="row"><label>Wandering Pac-Man + ghost</label>
+                <label class="sw"><input type="checkbox" id="pacAmbient"><i></i></label></div>
+            </div>
+
+            <div class="card"><h2>Time</h2>
+              <div class="row"><label>Timezone</label>
+                <select id="tzsel">
+                  <option value="GMT0BST,M3.5.0/1,M10.5.0">London</option>
+                  <option value="CET-1CEST,M3.5.0,M10.5.0/3">Paris / Berlin</option>
+                  <option value="WET0WEST,M3.5.0/1,M10.5.0">Lisbon</option>
+                  <option value="EST5EDT,M3.2.0,M11.1.0">New York</option>
+                  <option value="CST6CDT,M3.2.0,M11.1.0">Chicago</option>
+                  <option value="PST8PDT,M3.2.0,M11.1.0">Los Angeles</option>
+                  <option value="AEST-10AEDT,M10.1.0,M4.1.0/3">Sydney</option>
+                  <option value="JST-9">Tokyo</option>
+                  <option value="UTC0">UTC</option>
+                  <option value="custom">Custom…</option>
+                </select></div>
+              <div class="row" id="tzcustomrow" style="display:none"><label class="hint">POSIX TZ</label>
+                <input type="text" id="tz" style="flex:2"></div>
+              <div class="hint">Time syncs from the internet automatically when WiFi is up.
+                <span class="simtag">(here: resets the simulator to your computer's real clock)</span></div>
+              <div class="btns"><button class="acc" onclick="syncTime()">&#8986; Sync time from this device</button></div>
+            </div>
+
+            <div class="card"><h2>Network <span class="simtag">— simulated, no real radio</span></h2>
+              <div class="hint" id="netinfo"></div>
+              <div class="btns"><button onclick="scan()">&#128246; Scan networks</button></div>
+              <div class="nets" id="nets"></div>
+              <div class="row"><input type="text" id="ssid" placeholder="SSID" style="flex:1">
+                <input type="password" id="pass" placeholder="password" style="flex:1"></div>
+              <div class="btns"><button class="acc" onclick="joinWifi()">Join &amp; reboot</button></div>
+            </div>
+
+            <div class="card"><h2>Panel</h2>
+              <div class="row"><label>Rotate</label>
+                <select id="mapRotate"><option value="0">0&deg;</option><option value="1">90&deg;</option>
+                <option value="2">180&deg;</option><option value="3">270&deg;</option></select></div>
+              <div class="row"><label>Serpentine rows</label>
+                <label class="sw"><input type="checkbox" id="mapSerp"><i></i></label></div>
+              <div class="row"><label>Mirror</label>
+                <label class="sw"><input type="checkbox" id="mapFlip"><i></i></label></div>
+              <div class="btns">
+                <button onclick="act('maptest')">Orientation test</button>
+                <button onclick="act('identify')">Identify flash</button>
+              </div>
+              <div class="hint">Test: red = top-left, green = top-right, blue = bottom-left.
+                <span class="simtag">Rotate/serpentine/mirror address physical LED wiring on real hardware —
+                no visual effect on this logical simulation.</span></div>
+              <div class="row sub"><label>Power budget (mA)</label>
+                <input type="number" id="powerMa" min="300" max="3000" step="100" style="width:90px"></div>
+              <div class="row"><label class="hint">Safe budget while flashing (mA)</label>
+                <input type="number" id="usbSafeMa" min="200" max="900" step="50" style="width:90px"></div>
+              <div class="hint">Auto-clamps to the safe budget whenever the programming port has
+                a computer attached — its onboard diode isn't rated for full panel current
+                and a laptop port can't source it anyway.
+                <span class="simtag">Toggle "flashing cable plugged in" above to see the banner.</span></div>
+            </div>
+
+            <div class="card"><h2>System</h2>
+              <div class="row"><label>Hostname</label>
+                <input type="text" id="hostname" style="flex:1"></div>
+              <div class="hint" id="fwline"></div>
+              <div class="row sub"><input type="file" id="fwfile" accept=".bin" style="flex:1">
+                <button class="acc" onclick="doOta()">Update</button></div>
+              <progress id="otaprog" max="100" value="0" style="display:none"></progress>
+              <div class="btns sub"><button onclick="restartClock()">Restart clock</button></div>
+            </div>
+
+            </main>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="prose">
+    <h3>What's faithful, what's not</h3>
+    <p>The word grid, per-minute phrasing, hidden-word positions, all six transition styles and all six
+      attract shows are <strong>ported directly from <code>grid.cpp</code>/<code>animations.cpp</code></strong> —
+      same sprites, same timings, same randomisation. The engine tick mirrors <code>display.cpp</code>:
+      single-minute changes crossfade, five-minute/hour boundaries run the configured transition,
+      attract and hidden-word glints fire on their own timers, and a Pac-Man wanders the lit letters
+      between events.</p>
+    <p>What's necessarily simulated: <strong>Network, System and the panel-mapping controls</strong> have
+      no real radio, flash chip or LED strip behind them, so those sections respond honestly but don't
+      do anything — labelled inline rather than silently pretending. One deliberately-kept quirk: the
+      real firmware's live-preview endpoint reads the raw LED buffer <em>before</em> the brightness
+      scaler, so the phone's preview canvas here also ignores the brightness slider, exactly like the
+      real one does.</p>
+  </section>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   1. GRID + WORD LOGIC — ported from firmware/src/grid.cpp
+   ===================================================================== */
+const GRID_N = 16, NUM_CELLS = 256;
+const GRID = [
+  "ITKISAHIGHSCOREZ","TWENTYINSERTCOIN","FOURTEENSIXTEENA","SEVENTEENTWELVEB",
+  "EIGHTEENNINETEEN","THIRTEENQUARTERS","THREELEVENTENZAP","TWONEFIVEHALFPAC",
+  "MINUTESXPASTOPOW","TWONETHREEIGHTGO","SEVENINEFOURFIVE","SIXTENELEVENGAME",
+  "TWELVEOCLOCKOVER","SPACEINVADERSPEW","GALAGADONKEYKONG","ASTEROIDSQBERTUP"
+];
+const idx = (r,c)=> r*GRID_N+c;
+const W_IT=[0,0,2], W_IS=[0,3,2], W_A=[0,5,1];
+const W_MINUTE=[8,0,6], W_MINUTES=[8,0,7], W_PAST=[8,8,4], W_TO=[8,11,2], W_OCLOCK=[12,6,6], W_M30=[7,9,4];
+const W_MIN = [null,
+  [7,2,3],[7,0,3],[6,0,5],[2,0,4],[7,5,4],[2,8,3],[3,0,5],[4,0,5],[4,8,4],[6,10,3],
+  [6,4,6],[3,9,6],[5,0,8],[2,0,8],[5,8,7],[2,8,7],[3,0,9],[4,0,8],[4,8,8],[1,0,6]
+];
+const W_HOUR = [null,
+  [9,2,3],[9,0,3],[9,5,5],[10,8,4],[10,12,4],[11,0,3],[10,0,5],[9,9,5],[10,4,4],
+  [11,3,3],[11,6,6],[12,0,6]
+];
+function addWord([r,c0,len], set, phraseParts){
+  for(let k=0;k<len;k++) set.add(idx(r,c0+k));
+  if(phraseParts) phraseParts.push(GRID[r].substr(c0,len));
+}
+function timeCells(hour24, minute){
+  const set = new Set(), phraseParts = [];
+  let h = hour24 % 12; if(h===0) h=12;
+  addWord(W_IT,set,phraseParts); addWord(W_IS,set,phraseParts);
+  if(minute===0){ addWord(W_HOUR[h],set,phraseParts); addWord(W_OCLOCK,set,phraseParts);
+    return {cells:set, phrase:phraseParts.join(' ')}; }
+  const past = minute<=30, mm = past ? minute : 60-minute;
+  if(mm===15){ addWord(W_A,set,phraseParts); addWord(W_MIN[15],set,phraseParts); }
+  else if(mm===30){ addWord(W_M30,set,phraseParts); }
+  else if(mm===20){ addWord(W_MIN[20],set,phraseParts); addWord(W_MINUTES,set,phraseParts); }
+  else if(mm>20){ addWord(W_MIN[20],set,phraseParts); addWord(W_MIN[mm-20],set,phraseParts); addWord(W_MINUTES,set,phraseParts); }
+  else { addWord(W_MIN[mm],set,phraseParts); addWord(mm===1?W_MINUTE:W_MINUTES,set,phraseParts); }
+  addWord(past?W_PAST:W_TO,set,phraseParts);
+  addWord(W_HOUR[past?h:(h%12+1)],set,phraseParts);
+  return {cells:set, phrase:phraseParts.join(' ')};
+}
+const HIDDEN = [
+  {name:"INSERT COIN",   color:"#ffb300", parts:[[1,6,10]]},
+  {name:"HIGH SCORE",    color:"#4dd9ff", parts:[[0,6,9]]},
+  {name:"GAME OVER",     color:"#ff4d4d", parts:[[11,12,4],[12,12,4]]},
+  {name:"ZAP PAC POW",   color:"#ffd93b", parts:[[6,13,3],[7,13,3],[8,13,3]]},
+  {name:"SPACE INVADERS",color:"#4be15f", parts:[[13,0,13],[13,13,3]]},
+  {name:"GALAGA",        color:"#9fd8ff", parts:[[14,0,6]]},
+  {name:"DONKEY KONG",   color:"#ff8c3b", parts:[[14,6,10]]},
+  {name:"ASTEROIDS",     color:"#c8d8ff", parts:[[15,0,9]]},
+  {name:"QBERT",         color:"#ff8c3b", parts:[[15,9,5],[15,14,2]]}
+];
+function hiddenCells(which){
+  const set = new Set();
+  const hw = HIDDEN[which]; if(!hw) return set;
+  for(const [r,c0,len] of hw.parts) for(let k=0;k<len;k++) set.add(idx(r,c0+k));
+  return set;
+}
+
+/* =====================================================================
+   2. SPRITES + COLOURS — ported from firmware/src/animations.cpp
+   ===================================================================== */
+const INVADER_A=["..X.....X..","...X...X...","..XXXXXXX..",".XX.XXX.XX.","XXXXXXXXXXX","X.XXXXXXX.X","X.X.....X.X","...XX.XX..."];
+const INVADER_B=["..X.....X..","X..X...X..X","X.XXXXXXX.X","XXX.XXX.XXX",".XXXXXXXXX.","..XXXXXXX..","..X.....X..",".X.......X."];
+const GHOST14=["....BBBBBB....","..BBBBBBBBBB..",".BBBBBBBBBBBB.",".BWWWBBBBWWWB.","BBWWWBBBBWWWBB","BBWPPBBBBWPPBB","BBBBBBBBBBBBBB","BBBBBBBBBBBBBB","BBBBBBBBBBBBBB","BBBBBBBBBBBBBB","BBBBBBBBBBBBBB","BBBBBBBBBBBBBB","BBBBBBBBBBBBBB","BB.BBB..BBB.BB"];
+const PAC5_OPEN=[".XXX.","XXXX.","XXX..","XXXX.",".XXX."], PAC5_CLOSED=[".XXX.","XXXXX","XXXXX","XXXXX",".XXX."];
+const GHOST5=[".XXX.","XXXXX","XXXXX","XXXXX","X.X.X"];
+const CANNON=["...X...","..XXX..","XXXXXXX","XXXXXXX"];
+const BOOM_A=["..X..",".....","X.X.X",".....","..X.."], BOOM_B=["X.X.X",".X.X.","X.X.X",".X.X.","X.X.X"];
+const MATRIX_HEAD="#d9ffdc", MATRIX_G1="#4be15f", MATRIX_G2="#2e9440", MATRIX_G3="#1c5c2a";
+const PAC_YELLOW="#ffd93b", GHOST_RED="#ff4d4d", GHOST_CYAN="#4dd9ff", GHOST_PINK="#ffb8de", GHOST_ORANGE="#ffb847";
+const GHOST_BLUE="#3b5bff", GHOST_FLASH="#e8ecff", SI_GREEN="#4be15f", COL_WHITE="#ffffff";
+
+/* =====================================================================
+   3. ENGINE — ported from firmware/src/display.cpp + config.h
+   ===================================================================== */
+const cfg = {
+  // nightEnabled defaults OFF here (firmware default is true) — a demo
+  // shouldn't silently dim itself toward grey because of the real
+  // wall-clock hour on whatever machine happens to open it. The
+  // toggle in the Display card still works if you want to preview it.
+  brightness:140, nightEnabled:false, nightBright:25, nightFrom:22, nightTo:7,
+  powerMa:2500, usbSafeMa:400,
+  theme:0, timeColor:"#ffffff", accentColor:"#ffb300",
+  animsEnabled:true, transStyle:0, attractEnabled:true, attractMin:30,
+  wordsEnabled:true, wordsMin:10,
+  pacAmbient:true,
+  mapRotate:0, mapSerp:true, mapFlip:false,
+  tz:"GMT0BST,M3.5.0/1,M10.5.0", hostname:"timeinvaders"
+};
+const TR_RANDOM=0, TR_PAC=1, TR_MATRIX=2, TR_CANNON=3, TR_INVADER=4, TR_TETRIS=5, TR_FADE=6;
+const AT_RANDOM=0, AT_INVADERS=1, AT_GHOST=2, AT_PACCHASE=3, AT_CANNONDUEL=4, AT_MATRIX=5, AT_COIN=6;
+const THEME_RAINBOW=4, THEME_CUSTOM=5;   // indices into THEMES[] below (not a firmware concept yet)
+
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = ms => new Promise(res=>setTimeout(res, REDUCED ? Math.min(ms,4) : ms));
+const rnd = (a,b) => a + Math.floor(Math.random()*(b-a));   // like Arduino random(a,b): [a,b)
+
+// raw (unscaled) LED buffer, exactly like firmware's `CRGB leds[NUM_CELLS]`
+const leds = new Array(NUM_CELLS).fill(null);
+function hexToRgb(h){ h=h.replace('#',''); return [parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)]; }
+function rgbToHex([r,g,b]){ return '#'+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join(''); }
+function scaled(hex, s){ // ~ CRGB::nscale8_video
+  if(s<=0) return "#000000";
+  const [r,g,b]=hexToRgb(hex);
+  const f=c=> c>0 ? Math.max(1,Math.round(c*s/255)) : 0;
+  return rgbToHex([f(r),f(g),f(b)]);
+}
+function blend(hexA,hexB,amt){ // amt 0..255
+  const a=hexToRgb(hexA), b=hexToRgb(hexB), t=amt/255;
+  return rgbToHex([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]);
+}
+function sin8(t){ return Math.max(0,Math.min(255, Math.round(128+127*Math.sin((((t%256)+256)%256)/256*2*Math.PI)))); }
+
+// Rainbow theme: a slow full-spectrum wash rather than a fixed pair —
+// colTime()/colAccent() keep their normal (no-arg, single-string)
+// signature so every transition/fade already written against them
+// keeps working unchanged; the colour just happens to drift.
+function hsvToHex(h,s,v){
+  h=((h%360)+360)%360;
+  const c=v*s, x=c*(1-Math.abs((h/60)%2-1)), m=v-c;
+  let [r,g,b] = h<60?[c,x,0] : h<120?[x,c,0] : h<180?[0,c,x] : h<240?[0,x,c] : h<300?[x,0,c] : [c,0,x];
+  return rgbToHex([(r+m)*255,(g+m)*255,(b+m)*255]);
+}
+function rainbowHue(){ return (performance.now()/40) % 360; }   // ~14.4s per full cycle
+function colTime(){ return cfg.theme===THEME_RAINBOW ? hsvToHex(rainbowHue(),1,1) : cfg.timeColor; }
+function colAccent(){ return cfg.theme===THEME_RAINBOW ? hsvToHex(rainbowHue()+180,1,1) : cfg.accentColor; }
+
+function clearFrame(){ leds.fill(null); }
+function setCell(cell, color){ if(cell>=0 && cell<NUM_CELLS) leds[cell]=color; }
+function fillCells(set, color){ for(const c of set) setCell(c,color); }
+function drawSprite(rows, w, h, offR, offC, color, on='X'){
+  for(let r=0;r<h;r++) for(let c=0;c<w;c++){
+    const rr=offR+r, cc=offC+c;
+    if(rows[r][c]===on && rr>=0 && rr<GRID_N && cc>=0 && cc<GRID_N) setCell(idx(rr,cc), color);
+  }
+}
+
+// ---- virtual clock (sim-only: lets you jump time instead of waiting) ----
+let vOffsetMs = 0;
+function simNow(){ return new Date(Date.now()+vOffsetMs); }
+
+function effectiveBrightness(){
+  if(!cfg.nightEnabled) return cfg.brightness;
+  const h = simNow().getHours();
+  const night = cfg.nightFrom > cfg.nightTo
+    ? (h>=cfg.nightFrom || h<cfg.nightTo)
+    : (h>=cfg.nightFrom && h<cfg.nightTo);
+  return night ? cfg.nightBright : cfg.brightness;
+}
+
+// big-face DOM + phone canvas, both painted from the same raw buffer
+const faceEl = document.getElementById('face');
+const faceCells = [];
+for(let r=0;r<GRID_N;r++) for(let c=0;c<GRID_N;c++){
+  const s=document.createElement('span'); s.className='cell'; s.textContent=GRID[r][c];
+  faceEl.appendChild(s); faceCells.push(s);
+}
+function paintFace(){
+  const bright = effectiveBrightness();
+  for(let i=0;i<NUM_CELLS;i++){
+    const raw = leds[i];
+    const el = faceCells[i];
+    if(raw){
+      const col = scaled(raw, bright);
+      el.style.color = col;
+      el.style.textShadow = `0 0 6px ${col}, 0 0 16px ${col}88`;
+    } else { el.style.color=''; el.style.textShadow='none'; }
+  }
+}
+function previewHex(){ // mirrors /api/preview: RAW buffer, brightness-unscaled
+  let out=''; for(let i=0;i<NUM_CELLS;i++) out += (leds[i]||"#000000").slice(1);
+  return out;
+}
+async function showFrame(holdMs){
+  paintFace();
+  await sleep(holdMs);
+}
+
+let nowCells = new Set(), nowPhrase = "";
+function refreshTimeWords(){
+  const d = simNow();
+  const {cells,phrase} = timeCells(d.getHours(), d.getMinutes());
+  nowCells = cells; nowPhrase = phrase;
+}
+
+/* =====================================================================
+   4. TRANSITIONS — ported from animations.cpp
+   ===================================================================== */
+async function animFade(oldSet, newSet){
+  for(let step=0; step<=16; step++){
+    const up=step*16, down=255-up;
+    clearFrame();
+    for(const c of oldSet) if(!newSet.has(c)) setCell(c, scaled(colTime(),down));
+    for(const c of newSet) setCell(c, oldSet.has(c) ? colTime() : scaled(colTime(),up));
+    await showFrame(35);
+  }
+}
+async function animPacEat(oldSet, newSet){
+  const rowLit = new Array(GRID_N).fill(false);
+  for(const c of oldSet) rowLit[Math.floor(c/GRID_N)] = true;
+  const path=[]; let dir=0;
+  for(let r=0;r<GRID_N;r++){ if(!rowLit[r]) continue;
+    for(let c=0;c<GRID_N;c++) path.push(idx(r, dir ? GRID_N-1-c : c));
+    dir^=1; }
+  const eaten = new Set();
+  for(let i=0;i<path.length+8;i++){
+    if(i<path.length) eaten.add(path[i]);
+    clearFrame();
+    for(const c of oldSet) if(!eaten.has(c)) setCell(c, colTime());
+    const g = path[i-7]; if(g!==undefined) setCell(g, GHOST_RED);
+    if(i<path.length) setCell(path[i], PAC_YELLOW);
+    await showFrame(28);
+  }
+  clearFrame(); await showFrame(250);
+  for(let step=0; step<=12; step++){
+    clearFrame();
+    for(const c of newSet) setCell(c, scaled(colTime(), step*21));
+    await showFrame(35);
+  }
+}
+async function animMatrix(newSet, longIntro){
+  const d = Array.from({length:GRID_N}, ()=>({y:-rnd(0,18), v:0.35+Math.random()*0.75, len:rnd(4,8)}));
+  const until = performance.now() + (longIntro?6000:3200);
+  while(performance.now() < until){
+    clearFrame();
+    for(let c=0;c<GRID_N;c++){
+      d[c].y += d[c].v;
+      const head = Math.floor(d[c].y);
+      for(let k=0;k<d[c].len;k++){
+        const r=head-k;
+        if(r>=0 && r<GRID_N) setCell(idx(r,c), k===0?MATRIX_HEAD:k<2?MATRIX_G1:k<4?MATRIX_G2:MATRIX_G3);
+      }
+      if(head-d[c].len > GRID_N) d[c] = {y:-rnd(0,10), v:0.35+Math.random()*0.75, len:rnd(4,8)};
+    }
+    await showFrame(45);
+  }
+  clearFrame(); fillCells(newSet, MATRIX_G1); await showFrame(600);
+  for(let step=0; step<=12; step++){
+    clearFrame(); fillCells(newSet, blend(MATRIX_G1, colTime(), step*21));
+    await showFrame(40);
+  }
+}
+async function animCannon(oldSet, newSet){
+  const remain = new Set(oldSet);
+  const colHas = new Array(GRID_N).fill(false);
+  for(const c of oldSet) colHas[c%GRID_N]=true;
+  let cols = []; for(let c=0;c<GRID_N;c++) if(colHas[c]) cols.push(c);
+  for(let k=cols.length-1;k>0;k--){ const j=rnd(0,k+1); [cols[k],cols[j]]=[cols[j],cols[k]]; }
+  let cannonC = 8;
+  async function drawScene(shotR, shotC){
+    clearFrame();
+    for(const c of oldSet) if(remain.has(c)) setCell(c, colTime());
+    drawSprite(CANNON,7,4,12,cannonC-3,SI_GREEN);
+    if(shotR>=0) setCell(idx(shotR,shotC), colAccent());
+    await showFrame(26);
+  }
+  for(const targetC of cols){
+    while(cannonC !== targetC){ cannonC += (targetC>cannonC)?1:-1; await drawScene(-1,0); }
+    for(let r=11;r>=0;r--){
+      const cell = idx(r,cannonC);
+      if(remain.has(cell)){ remain.delete(cell); setCell(cell, COL_WHITE); }
+      await drawScene(r,cannonC);
+    }
+  }
+  await animFade(new Set(), newSet);
+}
+async function animInvaderZap(oldSet, newSet){
+  const remain = new Set(oldSet);
+  let ix=-2, iy=0;
+  for(let step=0; step<22; step++){
+    ix = (step<8) ? ix+1 : (step<16 ? ix-1 : ix+1);
+    if(step===8 || step===16) iy++;
+    const frm = (step&1) ? INVADER_B : INVADER_A;
+    clearFrame();
+    for(const c of oldSet) if(remain.has(c)) setCell(c, colTime());
+    drawSprite(frm,11,8,iy,ix,SI_GREEN);
+    await showFrame(220);
+    if(step%2===0){
+      const gc = Math.max(0,Math.min(GRID_N-1, ix+1+rnd(0,9)));
+      for(let r=iy+8; r<GRID_N; r++){
+        const cell = idx(r,gc);
+        if(remain.has(cell)){ remain.delete(cell); setCell(cell, COL_WHITE); }
+        setCell(cell, colAccent());
+        await showFrame(22);
+      }
+    }
+  }
+  await animFade(new Set(), newSet);
+}
+async function animTetris(oldSet, newSet){
+  for(let shift=0; shift<=GRID_N; shift+=2){
+    clearFrame();
+    for(const c of oldSet){
+      const r = Math.floor(c/GRID_N)+shift;
+      if(r<GRID_N) setCell(idx(r, c%GRID_N), colTime());
+    }
+    await showFrame(45);
+  }
+  const arr = [...newSet];
+  const maxFrames = arr.length*2 + GRID_N + 4;
+  for(let t=0; t<maxFrames; t++){
+    clearFrame();
+    let allLanded=true;
+    for(let k=0;k<arr.length;k++){
+      const cell=arr[k], target=Math.floor(cell/GRID_N), col=cell%GRID_N;
+      const y = t - k*2;
+      if(y<0){ allLanded=false; continue; }
+      if(y<target) allLanded=false;
+      const rr = Math.min(y,target);
+      setCell(idx(rr,col), y>=target ? colTime() : scaled(colTime(),140));
+    }
+    await showFrame(30);
+    if(allLanded) break;
+  }
+}
+async function doTransition(style, oldSet, newSet){
+  if(style===TR_RANDOM) style = rnd(TR_PAC, TR_FADE+1); // TR_PAC..TR_TETRIS
+  switch(style){
+    case TR_PAC:     await animPacEat(oldSet,newSet); break;
+    case TR_MATRIX:  await animMatrix(newSet,false);  break;
+    case TR_CANNON:  await animCannon(oldSet,newSet); break;
+    case TR_INVADER: await animInvaderZap(oldSet,newSet); break;
+    case TR_TETRIS:  await animTetris(oldSet,newSet); break;
+    default:         await animFade(oldSet,newSet);   break;
+  }
+}
+
+/* =====================================================================
+   5. ATTRACT SHOWS + extras — ported from animations.cpp
+   ===================================================================== */
+async function attractInvaders(){
+  let iy=1;
+  for(let step=0; step<26; step++){
+    const ix = 2 + Math.floor(((step<9) ? step%9 : (step<18 ? 8-step%9 : step%9)) / 2);
+    if(step===9 || step===18) iy+=2;
+    clearFrame();
+    drawSprite((step&1)?INVADER_B:INVADER_A,11,8,iy,ix,SI_GREEN);
+    await showFrame(260);
+  }
+}
+async function attractGhost(){
+  const GCOL=[GHOST_RED,GHOST_PINK,GHOST_CYAN,GHOST_ORANGE];
+  async function draw(body){
+    clearFrame();
+    for(let r=0;r<14;r++) for(let c=0;c<14;c++){
+      const ch=GHOST14[r][c]; if(ch==='.') continue;
+      setCell(idx(r+1,c+1), ch==='B'?body : ch==='W'?COL_WHITE : GHOST_BLUE);
+    }
+  }
+  for(let g=0; g<4; g++){ await draw(GCOL[g]); await showFrame(900); }
+  for(let f=0; f<3; f++){ await draw(GHOST_BLUE); await showFrame(260); await draw(GHOST_FLASH); await showFrame(180); }
+}
+async function attractPacChase(){
+  for(let pass=0; pass<2; pass++){
+    for(let x=-6; x<GRID_N+16; x++){
+      clearFrame();
+      for(let c=1;c<GRID_N;c+=2) if(c>x+2) setCell(idx(8,c), scaled(COL_WHITE,90));
+      drawSprite((x&1)?PAC5_OPEN:PAC5_CLOSED,5,5,6,x,PAC_YELLOW);
+      drawSprite(GHOST5,5,5,6,x-8, pass?GHOST_CYAN:GHOST_RED);
+      drawSprite(GHOST5,5,5,6,x-15, pass?GHOST_RED:GHOST_CYAN);
+      await showFrame(90);
+    }
+  }
+}
+async function attractCannonDuel(){
+  let ix=0, dirx=1, cannonC=2;
+  for(let step=0; step<18; step++){
+    ix+=dirx; if(ix>4||ix<0){ dirx=-dirx; ix+=dirx; }
+    const targetC = ix+5;
+    if(cannonC<targetC) cannonC++; else if(cannonC>targetC) cannonC--;
+    clearFrame();
+    drawSprite((step&1)?INVADER_B:INVADER_A,11,8,1,ix,SI_GREEN);
+    drawSprite(CANNON,7,4,12,cannonC-3,SI_GREEN);
+    await showFrame(200);
+  }
+  for(let r=11;r>=5;r--){
+    clearFrame();
+    drawSprite(INVADER_A,11,8,1,ix,SI_GREEN); // ix stays at its value from the drift loop above
+    drawSprite(CANNON,7,4,12,cannonC-3,SI_GREEN);
+    setCell(idx(r,cannonC), colAccent());
+    await showFrame(45);
+  }
+  for(let f=0; f<4; f++){
+    clearFrame();
+    drawSprite(CANNON,7,4,12,cannonC-3,SI_GREEN);
+    drawSprite((f&1)?BOOM_B:BOOM_A,5,5,3,cannonC-2, (f&1)?colAccent():COL_WHITE);
+    fillCells(hiddenCells(3), GHOST_RED);
+    await showFrame(220);
+  }
+}
+async function attractCoin(){
+  const coin=hiddenCells(0), score=hiddenCells(1);
+  for(let f=0; f<3; f++){
+    clearFrame(); fillCells(coin, colAccent()); await showFrame(420);
+    clearFrame(); await showFrame(180);
+  }
+  clearFrame(); fillCells(score, GHOST_CYAN); await showFrame(1000);
+}
+async function animAttract(which){
+  if(which===AT_RANDOM || which>6) which = rnd(AT_INVADERS, 7);
+  switch(which){
+    case AT_INVADERS:   await attractInvaders();   break;
+    case AT_GHOST:      await attractGhost();      break;
+    case AT_PACCHASE:   await attractPacChase();   break;
+    case AT_CANNONDUEL: await attractCannonDuel(); break;
+    case AT_MATRIX:     { refreshTimeWords(); await animMatrix(nowCells, true); return; }
+    case AT_COIN:       await attractCoin();       break;
+  }
+  refreshTimeWords();
+  await animFade(new Set(), nowCells);
+}
+async function animHiddenWord(which){
+  const word = hiddenCells(which);
+  const wc = HIDDEN[which].color;
+  for(let t=0; t<56; t++){
+    clearFrame();
+    fillCells(nowCells, colTime());
+    fillCells(word, scaled(wc, sin8(t*9)));
+    await showFrame(45);
+  }
+}
+async function animBoot(){
+  const coin = hiddenCells(0);
+  for(let f=0; f<2; f++){
+    for(let s=0; s<=10; s++){ clearFrame(); fillCells(coin, scaled(colAccent(), s*25)); await showFrame(30); }
+    for(let s=10; s>0; s--){ clearFrame(); fillCells(coin, scaled(colAccent(), s*25)); await showFrame(30); }
+  }
+  refreshTimeWords();
+  await animMatrix(nowCells, false);
+}
+async function animMapTest(){
+  for(let f=0; f<4; f++){
+    clearFrame();
+    setCell(0, "#ff0000"); setCell(GRID_N-1, "#00ff00");
+    setCell((GRID_N-1)*GRID_N, "#0000ff"); setCell(NUM_CELLS-1, COL_WHITE);
+    await showFrame(700);
+    clearFrame();
+    for(let c=0;c<GRID_N;c++) setCell(c, "#ff0000");
+    for(let r=0;r<GRID_N;r++) setCell(r*GRID_N, "#0000ff");
+    await showFrame(700);
+  }
+}
+async function animIdentify(){
+  for(let f=0; f<2; f++){
+    clearFrame(); for(let i=0;i<NUM_CELLS;i++) leds[i]=COL_WHITE; await showFrame(250);
+    clearFrame(); await showFrame(200);
+  }
+}
+
+/* =====================================================================
+   6. AMBIENT PAC + ENGINE TICK — ported from display.cpp
+   ===================================================================== */
+const pac = { r:13, c:3, hist:[] };
+let pacNextStep = 0;
+function pacStep(){
+  if(performance.now() < pacNextStep) return;
+  pacNextStep = performance.now() + 350;
+  pac.hist.unshift({r:pac.r,c:pac.c}); if(pac.hist.length>12) pac.hist.pop();
+  const dr=[0,0,1,-1], dc=[1,-1,0,0];
+  const order=[0,1,2,3];
+  for(let k=3;k>0;k--){ const j=rnd(0,k+1); [order[k],order[j]]=[order[j],order[k]]; }
+  let bestR=pac.r, bestC=pac.c, found=false;
+  for(const o of order){
+    const nr=pac.r+dr[o], nc=pac.c+dc[o];
+    if(nr<0||nr>=GRID_N||nc<0||nc>=GRID_N) continue;
+    if(!found){ bestR=nr; bestC=nc; found=true; }
+    if(!nowCells.has(idx(nr,nc))){ bestR=nr; bestC=nc; break; }
+  }
+  pac.r=bestR; pac.c=bestC;
+}
+function drawAmbient(){
+  if(!cfg.pacAmbient) return;
+  if(pac.hist.length>=8) setCell(idx(pac.hist[7].r,pac.hist[7].c), "#b42828");
+  setCell(idx(pac.r,pac.c), "#c8aa28");
+}
+function renderBase(){
+  clearFrame();
+  fillCells(nowCells, colTime());
+  drawAmbient();
+}
+
+let reqKind=null, reqParam=-1;
+function act(what, param){ reqKind=what; reqParam = (param===undefined||param===null) ? -1 : param; }
+
+let lastMin=-1, lastHour=-1, busy=false;
+let nextAttractAt=0, nextWordsAt=0;
+let usbLimited = false;
+
+async function tick(){
+  if(reqKind){
+    const rq=reqKind, param=reqParam; reqKind=null; reqParam=-1;
+    busy=true;
+    const cur = nowCells;
+    if(rq==='transition'){ refreshTimeWords(); await doTransition(param<0?cfg.transStyle:param, cur, nowCells); }
+    else if(rq==='attract'){ await animAttract(param<0?AT_RANDOM:param); }
+    else if(rq==='words'){ await animHiddenWord(param<0?rnd(0,HIDDEN.length):param); }
+    else if(rq==='maptest'){ await animMapTest(); }
+    else if(rq==='identify'){ await animIdentify(); }
+    busy=false;
+    setTimeout(tick,16); return;
+  }
+  const d = simNow(), mm=d.getMinutes(), hh=d.getHours();
+  if(mm!==lastMin){
+    const oldSet=nowCells, first=(lastMin<0);
+    const five = (mm%5===0) || (hh!==lastHour);
+    lastMin=mm; lastHour=hh;
+    refreshTimeWords();
+    if(!first){
+      busy=true;
+      if(cfg.animsEnabled && five) await doTransition(cfg.transStyle, oldSet, nowCells);
+      else await animFade(oldSet, nowCells);
+      busy=false;
+    }
+    setTimeout(tick,16); return;
+  }
+  if(cfg.animsEnabled && cfg.attractEnabled && performance.now() > nextAttractAt){
+    nextAttractAt = performance.now() + cfg.attractMin*60000;
+    busy=true; await animAttract(AT_RANDOM); busy=false;
+    setTimeout(tick,16); return;
+  }
+  if(cfg.wordsEnabled && performance.now() > nextWordsAt){
+    nextWordsAt = performance.now() + cfg.wordsMin*60000;
+    busy=true; await animHiddenWord(rnd(0,HIDDEN.length)); busy=false;
+    setTimeout(tick,16); return;
+  }
+  pacStep();
+  renderBase();
+  await showFrame(20);
+  setTimeout(tick,16);
+}
+
+/* =====================================================================
+   7. MOBILE UI — ported from firmware/src/webui.h (script only; markup
+      is inlined above verbatim). Network calls are replaced by direct
+      calls into the engine above — same function names/behaviour.
+   ===================================================================== */
+const THEMES=[["Arcade","#ffffff","#ffb300"],["Matrix","#6fff7d","#2e9440"],
+["Amber CRT","#ffb300","#ff8c3b"],["Ice","#9fd8ff","#4dd9ff"],
+["Rainbow",null,null],["Custom",null,null]];
+const $=id=>document.getElementById(id);
+
+function bindRange(id,key,lab){ const el=$(id); el.addEventListener('input',()=>{ if(lab) $(lab).textContent=el.value; cfg[key]=+el.value; }); }
+function bindSw(id,key){ $(id).addEventListener('change', e=>{ cfg[key]=e.target.checked; if(id==='nightEnabled') nightVis(); }); }
+function bindSel(id,key){ $(id).addEventListener('change', e=>{ cfg[key]=+e.target.value; }); }
+function bindCol(id,key){ $(id).addEventListener('change', e=>{ cfg[key]=e.target.value; cfg.theme=THEME_CUSTOM; markTheme(THEME_CUSTOM); }); }
+function nightVis(){ document.querySelectorAll('[data-night]').forEach(r=> r.style.display = $('nightEnabled').checked?'flex':'none'); }
+
+function markTheme(i){ document.querySelectorAll('#themes .chip').forEach((c,k)=> c.classList.toggle('on', k===i)); }
+THEMES.forEach((t,i)=>{
+  const c=document.createElement('div'); c.className='chip'; c.textContent=t[0];
+  c.onclick=()=>{ markTheme(i);
+    if(t[1]){ $('timeColor').value=t[1]; $('accentColor').value=t[2]; cfg.theme=i; cfg.timeColor=t[1]; cfg.accentColor=t[2]; }
+    else cfg.theme=i; };
+  $('themes').appendChild(c);
+});
+
+function loadCfgIntoUi(){
+  for(const k of ['brightness','nightBright','nightFrom','nightTo','attractMin','wordsMin','powerMa','usbSafeMa']) $(k).value=cfg[k];
+  $('attractMinV').textContent=cfg.attractMin; $('wordsMinV').textContent=cfg.wordsMin;
+  for(const k of ['nightEnabled','animsEnabled','attractEnabled','wordsEnabled','pacAmbient','mapSerp','mapFlip']) $(k).checked=cfg[k];
+  $('transStyle').value=cfg.transStyle; $('mapRotate').value=cfg.mapRotate;
+  $('timeColor').value=cfg.timeColor; $('accentColor').value=cfg.accentColor;
+  $('hostname').value=cfg.hostname; $('tz').value=cfg.tz;
+  const opt=[...$('tzsel').options].find(o=>o.value===cfg.tz);
+  $('tzsel').value = opt ? cfg.tz : 'custom';
+  $('tzcustomrow').style.display = opt ? 'none' : 'flex';
+  markTheme(cfg.theme); nightVis();
+}
+bindRange('brightness','brightness'); bindRange('nightBright','nightBright');
+bindRange('attractMin','attractMin','attractMinV'); bindRange('wordsMin','wordsMin','wordsMinV');
+$('nightFrom').addEventListener('change', e=> cfg.nightFrom=+e.target.value);
+$('nightTo').addEventListener('change', e=> cfg.nightTo=+e.target.value);
+$('powerMa').addEventListener('change', e=> cfg.powerMa=+e.target.value);
+$('usbSafeMa').addEventListener('change', e=> cfg.usbSafeMa=+e.target.value);
+bindSw('nightEnabled','nightEnabled'); bindSw('animsEnabled','animsEnabled');
+bindSw('attractEnabled','attractEnabled'); bindSw('wordsEnabled','wordsEnabled');
+bindSw('pacAmbient','pacAmbient'); bindSw('mapSerp','mapSerp'); bindSw('mapFlip','mapFlip');
+bindSel('transStyle','transStyle'); bindSel('mapRotate','mapRotate');
+bindCol('timeColor','timeColor'); bindCol('accentColor','accentColor');
+$('hostname').addEventListener('change', e=> cfg.hostname=e.target.value);
+$('tzsel').addEventListener('change', e=>{ const v=e.target.value;
+  $('tzcustomrow').style.display = v==='custom' ? 'flex' : 'none';
+  if(v!=='custom'){ $('tz').value=v; cfg.tz=v; } });
+$('tz').addEventListener('change', e=> cfg.tz=e.target.value);
+
+function syncTime(){ vOffsetMs = 0; lastMin=-1; }
+
+// -- simulated network / system, honestly labelled rather than silent --
+let netJoined=null, scanBusy=false;
+const FAKE_NETS = [
+  {ssid:"Home-5G", rssi:-42, open:false}, {ssid:"IoT-VLAN", rssi:-51, open:false},
+  {ssid:"Neighbour_WiFi", rssi:-71, open:false}, {ssid:"Guest", rssi:-66, open:true}
+];
+async function scan(){
+  $('nets').innerHTML='<span class="hint">scanning…</span>';
+  scanBusy=true; await sleep(900); scanBusy=false;
+  $('nets').innerHTML='';
+  FAKE_NETS.forEach(n=>{
+    const b=document.createElement('button');
+    b.innerHTML=`<span>${n.ssid}</span><span class="hint">${n.rssi} dBm</span>`;
+    b.onclick=()=>$('ssid').value=n.ssid;
+    $('nets').appendChild(b);
+  });
+}
+function joinWifi(){
+  netJoined = $('ssid').value || null;
+  renderStatus();
+  alert('Joining new network (simulated) — a real clock would reboot here.');
+}
+function doOta(){
+  const f=$('fwfile').files[0]; if(!f) return alert('Choose a .bin first');
+  $('otaprog').style.display='block'; let p=0;
+  const t=setInterval(async ()=>{
+    p+=100/12; $('otaprog').value=Math.min(100,p);
+    if(p>=100){ clearInterval(t); alert('Updated (simulated) — no real device to flash.'); $('otaprog').style.display='none'; $('otaprog').value=0;
+      await restartClock(); }
+  }, 90);
+}
+async function restartClock(){
+  lastMin=-1; nextAttractAt=0; nextWordsAt=0;
+  if(!busy){ busy=true; await animBoot(); busy=false; }
+}
+
+// -- live preview + status, mirrors /api/preview and /api/status polling --
+const cv=$('cv'), ctx=cv.getContext('2d');
+function preview(){
+  if(document.hidden) return;
+  const hex = previewHex();
+  ctx.fillStyle='#07080b'; ctx.fillRect(0,0,160,160);
+  ctx.font='7px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(let i=0;i<256;i++){
+    const r=(i/16)|0, c=i%16;
+    const col='#'+hex.substr(i*6,6);
+    if(col!=='#000000'){ ctx.fillStyle=col; ctx.fillRect(c*10+1,r*10+1,8,8); ctx.fillStyle='#000'; }
+    else ctx.fillStyle='#252a35';
+    ctx.fillText(GRID[r][c], c*10+5, r*10+5.5);
+  }
+}
+function renderStatus(){
+  const d = simNow();
+  const hm = d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+  $('hstat').textContent = `${hm} · ${netJoined?'192.168.1.42':'192.168.4.1'}`;
+  $('phrase').textContent = nowPhrase;
+  document.getElementById('phraseBig').textContent = nowPhrase;
+  $('netinfo').innerHTML = netJoined
+    ? `Connected · 192.168.1.42 · -47 dBm`
+    : '<span class="warn">Access-point mode — join a WiFi below for auto time.</span>';
+  $('fwline').textContent = `Firmware v0.3.0-sim · ${cfg.hostname}.local`;
+  $('usbbanner').style.display = usbLimited ? 'block' : 'none';
+  document.getElementById('simClockLabel').textContent = hm + (vOffsetMs ? ' (jumped)' : '');
+}
+setInterval(preview, 1000);
+setInterval(renderStatus, 1000);
+
+/* =====================================================================
+   8. SIMULATOR-ONLY CONTROLS (time jump, boot replay, USB toggle)
+   ===================================================================== */
+document.querySelectorAll('.simbar [data-jump]').forEach(b=>{
+  b.addEventListener('click', ()=>{ vOffsetMs += (+b.dataset.jump)*60000; });
+});
+$('simResetTime').addEventListener('click', ()=> vOffsetMs=0);
+document.getElementById('simBootBtn').addEventListener('click', restartClock);
+document.getElementById('simUsb').addEventListener('change', e=>{ usbLimited=e.target.checked; });
+
+/* =====================================================================
+   9. BOOT
+   ===================================================================== */
+(async function boot(){
+  loadCfgIntoUi();
+  refreshTimeWords();
+  lastMin = -1;
+  nextAttractAt = performance.now() + cfg.attractMin*60000;
+  nextWordsAt   = performance.now() + cfg.wordsMin*60000;
+  renderStatus(); preview();
+  busy = true; await animBoot(); busy = false;
+  tick();
+})();
+</script>
