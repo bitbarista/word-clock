@@ -22,13 +22,18 @@ main{max-width:560px;margin:0 auto;padding:14px 14px 60px;display:flex;flex-dire
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
 .card h2{margin:0 0 10px;font-size:12px;letter-spacing:.18em;color:var(--mut);text-transform:uppercase}
 .row{display:flex;align-items:center;gap:12px;padding:7px 0;min-height:36px}
-.row label{flex:1}
+.row label:not(.sw){flex:1}
 .row .hint{font-size:12px;color:var(--mut)}
 input[type=range]{flex:1.2;accent-color:var(--amber);min-width:110px}
 select,input[type=text],input[type=password],input[type=number]{
 background:#0d0f14;color:var(--ink);border:1px solid var(--line);border-radius:8px;
 padding:8px 10px;font:inherit;max-width:100%}
 select{min-width:130px}
+/* flex items don't shrink below their content's intrinsic width by
+   default (min-width:auto) -- without this, two inputs sharing a
+   .row (SSID/password, file-picker/Update) overflow instead of
+   sharing the available space */
+.row input[type=text],.row input[type=password],.row input[type=file]{min-width:0}
 input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-radius:8px;
 background:none;padding:2px}
 .sw{position:relative;width:46px;height:26px;flex:none}
@@ -69,7 +74,7 @@ font-size:13px;text-align:center;padding:8px 14px}
   <div class="row"><label>Brightness</label>
     <input type="range" id="brightness" min="10" max="255"></div>
   <div class="row"><label>Night dimming</label>
-    <span class="sw"><input type="checkbox" id="nightEnabled"><i></i></span></div>
+    <label class="sw"><input type="checkbox" id="nightEnabled"><i></i></label></div>
   <div class="row" data-night><label class="hint">Night brightness</label>
     <input type="range" id="nightBright" min="2" max="120"></div>
   <div class="row" data-night><label class="hint">From / to (hour)</label>
@@ -87,7 +92,7 @@ font-size:13px;text-align:center;padding:8px 14px}
 
 <div class="card"><h2>Animations</h2>
   <div class="row"><label>Arcade animations</label>
-    <span class="sw"><input type="checkbox" id="animsEnabled"><i></i></span></div>
+    <label class="sw"><input type="checkbox" id="animsEnabled"><i></i></label></div>
   <div class="row"><label>Time-change style</label>
     <select id="transStyle">
       <option value="0">Random</option><option value="1">Pac-Man eats it</option>
@@ -97,7 +102,7 @@ font-size:13px;text-align:center;padding:8px 14px}
     </select></div>
   <div class="hint">Big animations run on 5-minute changes; single minutes crossfade.</div>
   <div class="row"><label>Attract mode</label>
-    <span class="sw"><input type="checkbox" id="attractEnabled"><i></i></span></div>
+    <label class="sw"><input type="checkbox" id="attractEnabled"><i></i></label></div>
   <div class="row"><label class="hint">Every <b id="attractMinV"></b> min</label>
     <input type="range" id="attractMin" min="5" max="120" step="5"></div>
   <div class="btns">
@@ -113,7 +118,7 @@ font-size:13px;text-align:center;padding:8px 14px}
 
 <div class="card"><h2>Hidden arcade words</h2>
   <div class="row"><label>Word glints</label>
-    <span class="sw"><input type="checkbox" id="wordsEnabled"><i></i></span></div>
+    <label class="sw"><input type="checkbox" id="wordsEnabled"><i></i></label></div>
   <div class="row"><label class="hint">Every <b id="wordsMinV"></b> min</label>
     <input type="range" id="wordsMin" min="2" max="60"></div>
   <div class="btns"><button onclick="act('words',-1)">&#10024; Glint now</button></div>
@@ -121,7 +126,7 @@ font-size:13px;text-align:center;padding:8px 14px}
 
 <div class="card"><h2>Ambient</h2>
   <div class="row"><label>Wandering Pac-Man + ghost</label>
-    <span class="sw"><input type="checkbox" id="pacAmbient"><i></i></span></div>
+    <label class="sw"><input type="checkbox" id="pacAmbient"><i></i></label></div>
 </div>
 
 <div class="card"><h2>Time</h2>
@@ -158,9 +163,9 @@ font-size:13px;text-align:center;padding:8px 14px}
     <select id="mapRotate"><option value="0">0&deg;</option><option value="1">90&deg;</option>
     <option value="2">180&deg;</option><option value="3">270&deg;</option></select></div>
   <div class="row"><label>Serpentine rows</label>
-    <span class="sw"><input type="checkbox" id="mapSerp"><i></i></span></div>
+    <label class="sw"><input type="checkbox" id="mapSerp"><i></i></label></div>
   <div class="row"><label>Mirror</label>
-    <span class="sw"><input type="checkbox" id="mapFlip"><i></i></span></div>
+    <label class="sw"><input type="checkbox" id="mapFlip"><i></i></label></div>
   <div class="btns">
     <button onclick="act('maptest')">Orientation test</button>
     <button onclick="act('identify')">Identify flash</button>
