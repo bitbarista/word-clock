@@ -22,7 +22,7 @@ not started.**
 | Item | Notes |
 |---|---|
 | 16×16 WS2812B flexible panel | 160×160 mm, 10 mm pitch — the common ~£12–15 one |
-| ESP32-S3 supermini | in stock; WiFi NTP + web UI + animations |
+| Seeed XIAO ESP32S3 | WiFi NTP + web UI + animations; swapped from a generic "supermini" after none of three boards (two supermini vendors + this one) fit the cradle — the XIAO's dimensions are measured and tightly controlled |
 | 5 V / 3 A USB-C supply | into the rear power breakout; see power budget below |
 | Snap-in USB-C power socket, 4P PD pigtail | CHT-TS023R style, 5 A; 2P variant won't work with C-to-C cables |
 | 2× 5.1 kΩ resistors | CC1/CC2 → GND if the socket's CC wires are unterminated |
@@ -31,6 +31,7 @@ not started.**
 | 3 mm foam sheet | behind the panel, pressed by the shell ribs |
 | 4× M3×8 self-tapping screws | shell → faceplate corner posts |
 | Level shifter (optional) | 3.3 V data usually drives WS2812B fine at 5 V; add 74AHCT125 if flaky |
+| Schottky diode, 1N5822 or 1N5819 (recommended) | pod 5 V → ESP32 5 V pin, cathode toward the ESP32 — the XIAO likely has no onboard VBUS diode, so without this, don't plug in the pod and a flashing cable at the same time. Must be Schottky (low forward drop): ordinary rectifiers (1N4007/5399/5408) work but sag the ESP32's 5 V more under WiFi TX current spikes; fast-recovery types (FR107/FR207) and small-signal diodes (1N4148) are unsuitable here |
 
 ### Power & access
 
@@ -38,6 +39,23 @@ The ESP32 sits in a corner cradle with its **onboard USB-C protruding
 through the side wall** (right side viewed from the front; `usb_side`
 flips it) — flash/update firmware without opening the case, and one
 USB-C lead powers everything.
+
+**Fit note (ESP32 board swap):** the cradle was originally sized from
+a generic "ESP32-S3 supermini" guess and didn't fit any of three real
+boards on hand (two supermini clones plus a Seeed XIAO ESP32S3).
+Switched to the XIAO specifically — it's a tighter-toleranced, single-
+vendor part. Re-measured with calipers rather than trusting a listing
+(this project has been burned by that twice already): board 21.12 x
+17.83mm, 1.15mm PCB, USB-C connector 4.49mm tall (tallest point,
+measured from the underside of the board) and overhanging the board's
+short edge by 1.49mm, centred on that edge, no mounting holes. Cross-
+checked against third-party CAD bounding-box data (22.48 x 4.46 x
+17.78mm including the connector overhang) — a close match, so these
+are the numbers `esp_l`/`esp_w`/`esp_usbc_h` etc. are built from.
+Retention is an unchanged friction-clip slide-in channel (two ribs +
+a backstop wall with a wire gap) since the XIAO has no mounting
+holes either — just resized, with a real `esp_clr` (0.4mm) clearance
+this time instead of folding tolerance into the board-size variable.
 
 ### Power budget & protection
 
@@ -68,11 +86,22 @@ for arbitrary animation frames. Two-layer solution:
    that screws onto the lid from the inside over a matching cutout.
    Its 5 V pigtail feeds the panel pigtail AND the ESP32 5 V pin
    directly; grounds common (route the wires through a small channel
-   cut in the foam). The supermini's own side USB-C becomes
-   flash/serial only — its VBUS diode now usefully isolates the two
-   sources, so a laptop and the power supply can be connected at the
-   same time. (If your supermini has no diode — no ~0.3 V drop
-   between USB VBUS and the 5 V pin — don't plug both in at once.)
+   cut in the foam). The XIAO's own side USB-C becomes flash/serial
+   only.
+
+   **⚠ The XIAO ESP32S3 does not have the onboard VBUS Schottky diode
+   that some "supermini" boards use to isolate their two USB/power
+   inputs** (unconfirmed against Seeed's schematic, but assume not
+   present). Without it, the flash-port USB-C and the pod's 5 V feed
+   are directly tied together on the same rail with nothing stopping
+   the pod's 5 V from backfeeding into a laptop's USB port if both
+   are plugged in at once. **Don't plug both in at the same time**
+   unless/until an external Schottky diode (e.g. 1N5822/1N5819, pod
+   5 V → ESP32 5 V pin, cathode toward the ESP32) is added to
+   reinstate that isolation — this is a different failure mode than
+   the firmware USB-power-guard in `usbguard.h`, which only throttles
+   the *other* direction (a host over-powering the panel) and can't
+   protect a laptop from rail backfeed.
 
 Socket: **snap-in pigtail USB-C female, 4P PD/fast-charge variant**.
 The pod face is its mounting panel: **14.7 × 5.4 mm R1.3 cutout in a
@@ -233,6 +262,38 @@ reprint the lattice (and diffuser, if already printed).
 The font is a purpose-made 5×7 pixel stencil face (`font.scad`):
 letters with enclosed counters (A B D O P Q R) carry a bridge, so the
 stencil plate is self-supporting and nothing floats on the bed.
+
+**Fit note (shell rim vs. corner posts, and the real root cause):**
+the shell's registration lip (a ring that seats inside the
+faceplate's tray wall) ran into the four corner screw posts on test
+fit. Root cause: the `rsq()` rounded-square helper's double
+`offset(r) offset(-r)` silently shrank the *actual* shape by
+`2×corner_r` beyond the size you passed it — confirmed against the
+first-printed `faceplate.stl`, whose real bounding box was 178×178mm,
+not the 184mm `face_w` the code implies. That ate most of the lip's
+intended clearance against the posts, and shrank the post-to-tray-
+wall corridor to ~0.6mm — too tight for the lip to route around the
+posts at all without a sub-0.4mm-thick sliver of wall.
+
+First attempt punched a plain circular hole through the lip at each
+post — that cleared the interference (confirmed by rendering
+`intersection()` of the faceplate and shell and checking it was
+empty) but left an ugly break in the ring rather than routing around
+the post. Decided against permanently living with either that
+compromise or the tight corridor: **fixed `rsq()` itself** (drop the
+redundant second `offset`, one line) and reprinted the faceplate at
+its correct 184mm size instead of continuing to design around the
+undersized one. That restores the corridor to ~2.6mm, which is
+enough for the lip to route around each post as a real continuous
+detour: the ring's inner edge locally bulges around a
+`post_d + 2×post_relief_clr` circle at each post (`post_relief_clr`
+= 1.0mm) instead of the outer boundary ever being touched. Verified
+both ways — `intersection()` of faceplate and shell is empty
+everywhere, and a 2D cross-section of the lip at each corner shows
+one continuous band with a smooth circular notch, not a gap.
+**Reprint both the faceplate and the shell** — the faceplate's actual
+size changes (184mm, not 178mm), so the old one won't register with
+the new shell correctly.
 
 ## The letter grid (per-minute)
 

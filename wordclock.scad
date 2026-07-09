@@ -7,7 +7,7 @@
 // diffuser sheet (print several thicknesses/materials and A/B them)
 // → drop-in baffle lattice → LED panel → foam → shell.
 // Electronics: 16x16 WS2812B flexible panel (160x160, 10 mm pitch)
-// + ESP32-S3 supermini.  See README.md for the print/assembly guide.
+// + Seeed XIAO ESP32S3.  See README.md for the print/assembly guide.
 // =================================================================
 
 VERSION = "0.1.0";
@@ -56,21 +56,38 @@ wall_t = 2.4;
 lid_t = 2.4;
 // shell lip engagement depth
 lip_h = 4;
+// corner screw post outer diameter
+post_d = 7;
 // M3 self-tap pilot in the corner posts
 post_hole_d = 2.7;
+// radial clearance the shell's lip must keep from each corner post —
+// the lip routes around the post rather than running through it, so
+// this is a real per-edge allowance (not the ~0.4mm nominal gap the
+// lip_out/wall_t formula implies, which the rsq() corner-rounding
+// quirk eats into — see README fit note)
+post_relief_clr = 1.0;
 
 /* [Electronics] */
 // side the USB-C exits, viewed from the FRONT (model x is mirrored)
 usb_side = -1; // [-1:right, 1:left]
 // height of the USB-C/pocket centre above the bottom face edge
 usb_up = 28;
-// ESP32 supermini board size incl. fitting tolerance
-esp_l = 22.8;
-esp_w = 18.4;
+// Seeed XIAO ESP32S3 — measured with calipers (checked against
+// third-party CAD bounding-box data: 22.48 x 4.46 x 17.78mm incl.
+// USB-C overhang, a close match), not taken from a vendor listing.
+// No mounting holes on this board — retained by a friction-clip
+// slide-in cradle, not screws.
+esp_l = 21.12;             // board length (long axis, PCB only)
+esp_w = 17.83;              // board width (PCB only)
+esp_t = 1.15;               // bare PCB thickness
+esp_usbc_h = 4.49;          // tallest point (USB-C shell), from PCB underside
+esp_usbc_overhang = 1.49;   // USB-C shell overhang past the board's short edge
+esp_usbc_w = 9;             // USB-C shell width (spec nominal, centred on the board)
+esp_clr = 0.4;              // per-edge clearance for the friction-clip cradle
 // Rear power pod: a shallow bump-out on the back of the shell that
 // houses a SNAP-IN panel-mount USB-C power socket at the
 // bottom-middle, above the stand horn. Feeds panel + ESP32 5V
-// directly; supermini USB-C stays flash-only.
+// directly; the XIAO's own USB-C stays flash-only.
 // Dimensions from the NinthQua CHT-TS023R-H160-P4 drawing (4P
 // PD/fast-charge pigtail variant, 5A): cutout 13.6 x 6.3 R1.3,
 // flange 16.7 x 10.3 x 2.0, body ~12 x 5.3 x 14 deep, snap wings
@@ -159,7 +176,11 @@ groove_w = slab_t + groove_clr;
 // ----------------------------------------------------------------
 // helpers
 // ----------------------------------------------------------------
-module rsq(w, r = corner_r) offset(r) offset(-r) square(w - 2*r, center = true);
+// rounded square, actual outer size = w with corner radius r. (Was
+// `offset(r) offset(-r) square(w-2*r)` — the redundant second offset
+// eroded the dilation straight back off, silently delivering a
+// w-2*r actual size for every rsq()'d part; see README fit note.)
+module rsq(w, r = corner_r) offset(r) square(w - 2*r, center = true);
 
 // Letter voids for an n x n grid, MIRRORED so the text reads
 // correctly from the front when the plate prints letters-down
@@ -202,7 +223,7 @@ module face_core(n, grid, fw, tray = true) {
         for (sx = [-1, 1], sy = [-1, 1])
             translate([sx*post_off, sy*post_off, t_front])
                 difference() {
-                    cylinder(d = 7, h = wall_top - t_front);
+                    cylinder(d = post_d, h = wall_top - t_front);
                     translate([0, 0, wall_top - t_front - 10])
                         cylinder(d = post_hole_d, h = 10 + eps);
                 }
@@ -297,15 +318,25 @@ module coupon_diffuser() {
 
 // ----------------------------------------------------------------
 // rear shell: flat lid, inner lip, foam-pressure ribs,
-// ESP32 supermini pocket, cable exit
+// ESP32 (XIAO) pocket, cable exit
 // ----------------------------------------------------------------
 module shell() {
     difference() {
         union() {
             linear_extrude(lid_t) rsq(face_w);
-            // lip that registers inside the tray wall
+            // lip that registers inside the tray wall — routed around
+            // the faceplate's corner posts (rather than punched
+            // through them) so the ring stays one continuous band
             translate([0, 0, lid_t]) linear_extrude(lip_h)
-                difference() { rsq(2*lip_out, 2); rsq(2*lip_out - 3.6, 1.2); }
+                difference() {
+                    rsq(2*lip_out, 2);
+                    union() {
+                        rsq(2*lip_out - 3.6, 1.2);
+                        for (sx = [-1, 1], sy = [-1, 1])
+                            translate([sx*post_off, sy*post_off])
+                                circle(d = post_d + 2*post_relief_clr);
+                    }
+                }
             // ribs pressing the foam/panel against the baffle
             translate([0, 0, lid_t]) {
                 for (x = [-40, 40]) translate([x, 0, 0])
@@ -313,18 +344,22 @@ module shell() {
                 for (y = [-40, 40]) translate([0, y, 0])
                     linear_extrude(1.0) square([cells*pitch, 1.6], center = true);
             }
-            // ESP32 supermini cradle in the bottom corner, USB-C edge
-            // against the side wall. NB the lid flips onto the tray,
-            // so shell y is MIRRORED vs the assembled device: device
-            // bottom = model +y, and model x = device x.
+            // ESP32 (Seeed XIAO ESP32S3) cradle in the bottom corner,
+            // USB-C edge against the side wall. Friction-clip slide-in
+            // channel — this board has no mounting holes: two ribs
+            // grip the long edges with esp_clr slack, a backstop wall
+            // (with a gap for soldered power/data leads) stops it at
+            // the far end. NB the lid flips onto the tray, so shell y
+            // is MIRRORED vs the assembled device: device bottom =
+            // model +y, and model x = device x.
             translate([usb_side * (face_w/2 - wall_t - 0.2 - esp_l/2),
                        face_w/2 - usb_up, lid_t])
-                linear_extrude(5) {
-                    for (s = [-1, 1]) translate([0, s * (esp_w + 1.8)/2])
+                linear_extrude(esp_usbc_h + 0.5) {
+                    for (s = [-1, 1]) translate([0, s * (esp_w + esp_clr + 1.8)/2])
                         square([esp_l, 1.8], center = true);
                     translate([-usb_side * (esp_l + 1.8)/2, 0])
                         difference() {
-                            square([1.8, esp_w + 3.6], center = true);
+                            square([1.8, esp_w + esp_clr + 3.6], center = true);
                             square([2.6, 8], center = true); // wire gap
                         }
                 }
