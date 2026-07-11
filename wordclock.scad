@@ -10,23 +10,36 @@
 // + Seeed XIAO ESP32S3.  See README.md for the print/assembly guide.
 // =================================================================
 
-VERSION = "0.1.0";
+VERSION = "0.1.6";
 echo(str("word clock model v", VERSION));
 
 include <font.scad>
 
 /* [Part] */
-part = "assembly"; // [assembly, faceplate, lattice, diffuser, shell, stand, pod, coupon, coupon_diffuser, face2d]
+part = "assembly"; // [assembly, faceplate, lattice, diffuser, shell, stand, coupon, coupon_diffuser, pod_coupon, face2d]
 
 /* [LED panel] */
 // LED-to-LED spacing of the matrix panel
 pitch = 10;
 // LEDs per side
 cells = 16;
-// panel PCB thickness
+// panel PCB + LED component height — measured (calipers): bare FPCB
+// 0.25mm, 1.8mm total with LEDs mounted. 2.0mm modeled keeps a small
+// margin over the measured 1.8mm.
 panel_t = 2.0;
-// compressible foam behind the panel
-foam_t = 3.0;
+// Depth of the cavity behind the panel — houses the foam pressure
+// pads, the ESP32 locator, the 1000uF cap, and (as of this revision)
+// the power socket. Was 3.0mm ("foam_t"), sized only for a
+// compressible foam sheet without ever checking it against the real
+// components that have to physically live in it: the ESP32 (XIAO
+// measured 4.49mm PCB-to-USB-C-top) and the 1000uF cap (11.5mm
+// minimum, any standard package, leaded or SMD) both failed to fit —
+// see README for the full audit. Resized to the tallest real
+// component (the cap) plus margin, rather than patching each
+// component separately or adding local bump-outs: a flat back was a
+// deliberate requirement, so the extra depth goes into the whole
+// device's thickness instead. 11.5mm + 1.5mm margin = 13mm.
+back_t = 13.0;
 
 /* [Face plate] */
 // stencil plate thickness (letters are through-voids)
@@ -40,6 +53,16 @@ baffle_d = 12;
 lat_wall = 1.2;
 // bezel width beyond the LED grid
 bezel = 12;
+// stack-pocket wall: hollow "frame within a frame" instead of solid
+// (was a solid ring baffle_d deep, ~11.5mm wide around the whole
+// perimeter -- most of that a slicer would fill as infill regardless
+// of settings). Thin outer + inner walls connected by sparse ribs,
+// with a thin solid cap at the front for a consistent visible
+// bezel surface.
+bezel_wall_t = 2.0;   // outer/inner wall thickness
+bezel_cap_t = 1.5;    // solid front cap; rest of the depth is ribbed
+bezel_rib_w = 3.0;    // rib width
+bezel_rib_n = 4;      // ribs per straight edge (not counting corners)
 // letter pixel size (letter = 5 x 7 pixels)
 font_px = 1.1;
 // face corner radius
@@ -66,6 +89,16 @@ post_hole_d = 2.7;
 // lip_out/wall_t formula implies, which the rsq() corner-rounding
 // quirk eats into — see README fit note)
 post_relief_clr = 1.0;
+// support ribs for the corner posts: post height is wall_top-t_front,
+// which grew substantially (17.4mm -> 27.4mm) when back_t increased
+// for the depth-budget fix — a 7mm-diameter post that tall is a real
+// snap risk, especially under screw-driving torque. Ribs connect each
+// post to the tray wall in both X and Y. Kept clear of the shell's
+// lip zone (the top lip_h of the post height, where the shell's lip
+// registers and routes around the post — see shell()) by this much
+// extra margin, so the ribs can't interfere with that routing.
+post_rib_w = 3.5;     // rib width (tangential)
+post_rib_clr = 2.0;   // margin below the lip zone
 
 /* [Electronics] */
 // Seeed XIAO ESP32S3 — measured with calipers (checked against
@@ -116,29 +149,37 @@ cradle_h = 1.8;
 // board's connector is actually on, so this is an assembly
 // instruction, not a design assumption.
 esp_stop_t = 1.8;   // end-stop wall thickness
-// Rear power pod: a shallow bump-out on the back of the shell that
-// houses a SNAP-IN panel-mount USB-C power socket at the
-// bottom-middle, above the stand horn. Feeds panel + ESP32 5V
-// directly; the XIAO's own USB-C stays flash-only.
-// Dimensions from the NinthQua CHT-TS023R-H160-P4 drawing (4P
-// PD/fast-charge pigtail variant, 5A): cutout 13.6 x 6.3 R1.3,
-// flange 16.7 x 10.3 x 2.0, body ~12 x 5.3 x 14 deep, snap wings
-// spread to ~16 behind a ~2 mm panel.
+// Power socket — snap-in USB-C, mounted DIRECTLY INTO the shell's
+// own material now, not a separate bump-out part (v0.1.6). Used to
+// be its own printed part, screwed onto the shell from the inside —
+// meant removing it required separating the shell from the whole
+// rest of the assembly to reach those screws. Now that back_t gives
+// the shell real interior depth, the socket's snap-fit flange passes
+// through the shell's own lid_t directly, with the wing-deployment
+// cavity extending into the interior (that interior space was already
+// there for the electronics — this doesn't need extra depth beyond
+// back_t, just doesn't collide with what else lives there). No
+// mounting screws at all: the socket's own snap wings retain it
+// against the shell material, same mechanism as before, one less
+// separate part and one less set of screws (all remaining screws —
+// just the 4 corner ones — were already outside-accessible).
+// Flange sits against lid_t = 2.4mm; the verified-working figure
+// from the old separate-pod design was pwr_face_t = 2.0mm exactly —
+// 0.4mm more here. Not verified against the physical part's snap-
+// wing flex range; worth checking on the actual socket before
+// trusting it blind.
 pwr_pod = true;
-// snap-in cutout in the pod face
+// snap-in cutout in the shell
 pwr_snap_w = 14.7;
 pwr_snap_h = 5.4;
 pwr_snap_r = 1.3;
-// pod face (= panel the socket snaps onto) thickness
-pwr_face_t = 2.0;
-// interior cavity: body + wing deployment + wire pass-through
-// (w,h keep a similar clearance margin around the cutout as before;
-// depth set so cavity + pwr_face_t = 10.0mm total pod height)
+// interior cavity: body + wing deployment (depth cd unchanged from
+// the old separate-pod design — that's the verified-working number,
+// just relocated, not re-derived)
 pwr_cavity = [18, 10, 8];
 // pod centre height above the bottom face edge (keep pod + plug
 // clear of the 34 mm stand horn)
 pod_up = 48;
-pod_wall = 2.4;
 
 /* [Ventilation] */
 // rear pressure-pad grid (replaces the old full-length ribs) —
@@ -148,7 +189,19 @@ pod_wall = 2.4;
 // stack tolerance, not provide fine flatness.
 pad_off = 40;
 pad_w = 8;
-pad_h = 1.0;
+// pad_h was 1.0mm, sized when back_t (then foam_t) was 3.0mm: a
+// short rigid nub plus a 3mm foam pad (BOM) together reached the
+// panel, foam doing most of the bridging. Never revisited when
+// back_t grew to 13mm for the depth-budget fix — nub + foam only
+// reached 4mm of a 13mm gap, leaving the pads 9mm short of the
+// panel and doing nothing at all. This is exactly the kind of
+// downstream break the depth-budget change should have been
+// checked against at the time, not found later. Grown so nub + the
+// still-3mm foam (BOM unchanged) reaches 13.5mm — 0.5mm of
+// deliberate interference so the foam is under real compression,
+// not just barely touching, same margin logic used elsewhere in
+// this file (e.g. the corner-post rib clearance).
+pad_h = 10.5;
 // extra pads reaching toward the panel corners (±80,±80 — the LED
 // grid's actual corners) rather than stopping at pad_off like the
 // inner grid. A flexible PCB matrix sags most at unsupported
@@ -188,8 +241,27 @@ vent_y = 68;
 // backwards rake of the face
 tilt = 12; // [5:25]
 stand_w = 120;
-stand_depth = 92;
+// stand_depth/stand_h and the wedge polygon in stand() were sized
+// for the old slab_t=21mm (groove_w~=21.8mm). Never revisited when
+// back_t grew slab_t to 31mm (groove_w~=31.8mm, +10mm) — groove_w
+// scales automatically (it's a formula) but the wedge cross-section
+// didn't, so the enlarged slot cut clean through the front lip
+// instead of just the gap it used to sit in, collapsing the lip and
+// horn into a flat shell (rendered and visually confirmed broken
+// before this fix). Grew stand_depth (92->104) and pushed the horn
+// back in the polygon (see stand()) to restore clearance — verified
+// by checking the lip's solid region doesn't intersect the groove
+// cutter, not just by the numbers looking plausible (see stand()).
+stand_depth = 104;
 stand_h = 34;
+// slot centre-line at the top face — was 40, moved to 54 so the
+// wider groove (slab_t grew) clears the front lip (occupies
+// Y=[24,32]) with a real margin instead of cutting through it.
+// Shared between stand() and assembly() (device positioning) so
+// there's one number to keep in sync, not two — assembly() used to
+// hardcode this separately and silently go stale when stand()'s own
+// copy changed.
+groove_y = 54;
 // slot clearance around the slab
 groove_clr = 0.8;
 
@@ -243,7 +315,7 @@ COUPON = [
 
 // derived
 face_w   = cells * pitch + 2 * bezel;         // 184
-wall_top = t_front + baffle_d + panel_t + foam_t + 0.4;  // 18.6
+wall_top = t_front + baffle_d + panel_t + back_t + 0.4;  // 28.6
 slab_t   = wall_top + lid_t;                  // total device thickness
 post_off = face_w/2 - 8.5;                    // corner post centres
 lip_out  = face_w/2 - wall_t - 0.4;           // shell lip outer half-width
@@ -257,6 +329,36 @@ groove_w = slab_t + groove_clr;
 // eroded the dilation straight back off, silently delivering a
 // w-2*r actual size for every rsq()'d part; see README fit note.)
 module rsq(w, r = corner_r) offset(r) square(w - 2*r, center = true);
+
+// stack-pocket wall, hollow: thin outer (fw) + inner (op) walls, a
+// thin solid cap at the front for a consistent visible surface, and
+// sparse ribs behind it connecting the two walls — see bezel_wall_t
+// etc. comment. Ribs run along the 4 straight edges only (margin from
+// each corner keeps them clear of both the outer rounding and the
+// corner posts, which sit in this same radial band near the corners
+// — verified with intersection(), not just by the margin looking
+// big enough).
+module bezel_frame(fw, op, depth) {
+    rib_span = op - 20;
+    union() {
+        linear_extrude(bezel_cap_t)
+            difference() { rsq(fw); square(op, center = true); }
+        translate([0, 0, bezel_cap_t])
+            linear_extrude(depth - bezel_cap_t) {
+                difference() { rsq(fw); rsq(fw - 2*bezel_wall_t, corner_r - 1); }
+                difference() {
+                    square(op + 2*bezel_wall_t, center = true);
+                    square(op, center = true);
+                }
+                for (rot = [0, 90, 180, 270])
+                    rotate(rot)
+                        for (i = [0 : bezel_rib_n - 1])
+                            translate([-rib_span/2 + i*(rib_span/(bezel_rib_n - 1)),
+                                       (op/2 + fw/2)/2])
+                                square([bezel_rib_w, fw/2 - op/2], center = true);
+            }
+    }
+}
 
 // stadium vent slot, long axis along Y (rotate/place as needed) —
 // width vent_slot_w, total length vent_slot_l
@@ -286,10 +388,18 @@ module face_core(n, grid, fw, tray = true) {
     linear_extrude(t_front)
         difference() { rsq(fw); letters2d(n, grid); }
 
-    // bezel border ring down to the panel plane; the separate
-    // lattice part drops into the opening
-    translate([0, 0, t_front]) linear_extrude(baffle_d)
-        difference() { rsq(fw); square(op, center = true); }
+    // stack-pocket wall: captures diffuser + lattice + PANEL now
+    // (depth = baffle_d + panel_t, was baffle_d alone). The old
+    // baffle_d-only depth left the panel with no snug pocket at
+    // all — beyond baffle_d the only wall is the tray wall further
+    // out (fw-2*wall_t = 179.2mm), so the 160mm panel just floated
+    // loose in that much bigger opening instead of being captured
+    // the way the lattice/diffuser are. Same op opening continues
+    // through both stages, so the panel gets the same 0.5mm/side
+    // clearance convention as the lattice/diffuser drop-in fit.
+    // Hollow frame-within-frame construction — see bezel_frame().
+    translate([0, 0, t_front])
+        bezel_frame(fw, op, baffle_d + panel_t);
 
     if (tray) {
         // perimeter tray wall up to the shell seat. Used to be
@@ -303,13 +413,49 @@ module face_core(n, grid, fw, tray = true) {
         // no need to reprint on its account alone.
         translate([0, 0, t_front]) linear_extrude(wall_top - t_front)
             difference() { rsq(fw); rsq(fw - 2*wall_t, corner_r - 1); }
-        // corner screw posts
+        // corner screw posts. Pilot hole is a fixed 10mm deep
+        // regardless of post height (post is now wall_top-t_front =
+        // 27.4mm tall, up from 17.4mm, since wall_top grew with
+        // back_t — the post itself just got longer below the pilot,
+        // not the engagement geometry).
+        //
+        // Screw length: the BOM's original M3x8 was never checked
+        // against how much of that length is actually usable. The
+        // screw has to clear lid_t+lip_h = 6.4mm of shell material
+        // (pure clearance, no threads) before it even reaches this
+        // post, which leaves an M3x8 only 1.6mm of actual thread
+        // engagement — far short of the ~2x-diameter (6mm) guidance
+        // for a reliable self-tapping joint into plastic. Needs
+        // M3x16 (9.6mm engagement, just under the 10mm pilot depth)
+        // — see BOM.
         for (sx = [-1, 1], sy = [-1, 1])
             translate([sx*post_off, sy*post_off, t_front])
                 difference() {
                     cylinder(d = post_d, h = wall_top - t_front);
                     translate([0, 0, wall_top - t_front - 10])
                         cylinder(d = post_hole_d, h = 10 + eps);
+                }
+        // post support ribs — see post_rib_w/post_rib_clr comment
+        // above. Each post gets two ribs (X and Y) to the tray wall.
+        // rib_in overlaps 1mm into the post, rib_out overlaps 0.5mm
+        // into the tray wall, so both ends fuse cleanly rather than
+        // meeting at a zero-thickness tangent.
+        // rib_in/rib_out are LOCAL offsets from the post centre (this
+        // whole block is inside translate([sx*post_off, sy*post_off,
+        // ...])) — rib_out MUST subtract post_off, or it's the tray
+        // wall's position from the faceplate origin instead of from
+        // the post, overshooting by post_off (~83.5mm) as an earlier
+        // version of this did.
+        rib_h   = wall_top - t_front - lip_h - post_rib_clr;
+        rib_in  = post_d/2 - 1;
+        rib_out = fw/2 - wall_t - post_off + 0.5;
+        for (sx = [-1, 1], sy = [-1, 1])
+            translate([sx*post_off, sy*post_off, t_front])
+                linear_extrude(rib_h) {
+                    translate([sx*(rib_in + rib_out)/2, 0])
+                        square([rib_out - rib_in, post_rib_w], center = true);
+                    translate([0, sy*(rib_in + rib_out)/2])
+                        square([post_rib_w, rib_out - rib_in], center = true);
                 }
     }
 }
@@ -401,6 +547,33 @@ module coupon_diffuser() {
 }
 
 // ----------------------------------------------------------------
+// power socket coupon: standalone test of the snap-in cutout +
+// cavity, same local geometry as the real cutout in shell()
+// (pwr_snap_w/h/r, pwr_cavity, at lid_t thickness) — checks the one
+// unverified assumption from the v0.1.6 pod-integration redesign
+// before committing to a full shell print: the flange now sits
+// against lid_t (2.4mm) instead of the previously-confirmed-working
+// 2.0mm pod face. Front (flange) face prints on the bed, same
+// orientation as the real shell.
+// ----------------------------------------------------------------
+pod_coupon_w = 40;
+pod_coupon_h = 40;
+
+module pod_coupon() {
+    coupon_t = lid_t + pwr_cavity[2];
+    difference() {
+        linear_extrude(coupon_t) square([pod_coupon_w, pod_coupon_h], center = true);
+        // snap-fit flange cutout — the untested dimension
+        translate([0, 0, -eps]) linear_extrude(lid_t + 2*eps)
+            offset(pwr_snap_r) offset(-pwr_snap_r)
+                square([pwr_snap_w, pwr_snap_h], center = true);
+        // cavity behind it: body + wing deployment, open at the back
+        translate([0, 0, lid_t - eps]) linear_extrude(pwr_cavity[2] + 2*eps)
+            square([pwr_cavity[0], pwr_cavity[1]], center = true);
+    }
+}
+
+// ----------------------------------------------------------------
 // rear shell: flat lid, inner lip, foam-pressure ribs,
 // ESP32 (XIAO) pocket, cable exit
 // ----------------------------------------------------------------
@@ -463,15 +636,17 @@ module shell() {
                 cylinder(d = 6.5, h = 1.4);
             }
         if (pwr_pod) {
-            // opening under the pod (wires pass straight through)
-            translate([0, face_w/2 - pod_up, -eps]) linear_extrude(lid_t + 2)
-                offset(2) offset(-2)
+            // power socket mounts directly into the shell now (see
+            // pwr_pod comment above) — snap-fit flange cutout through
+            // the lid, cavity behind it for body + wing deployment.
+            // No separate part, no screws.
+            translate([0, face_w/2 - pod_up, 0]) {
+                translate([0, 0, -eps]) linear_extrude(lid_t + 2*eps)
+                    offset(pwr_snap_r) offset(-pwr_snap_r)
+                        square([pwr_snap_w, pwr_snap_h], center = true);
+                translate([0, 0, lid_t - eps]) linear_extrude(pwr_cavity[2] + eps)
                     square([pwr_cavity[0], pwr_cavity[1]], center = true);
-            // pod ear screw holes (M3 from the inside, into the pod)
-            for (s = [-1, 1])
-                translate([s*(pwr_cavity[0]/2 + pod_wall + 6),
-                           face_w/2 - pod_up, -eps])
-                    cylinder(d = 3.4, h = lid_t + 2);
+            }
         }
         // ventilation: two rows of slots through the lid (see
         // [Ventilation] params for the clearance reasoning). Model
@@ -489,54 +664,36 @@ module shell() {
 }
 
 // ----------------------------------------------------------------
-// rear power pod: houses the USB-C power socket, screws onto the
-// back of the shell over the matching cutout. Printed as modelled
-// (socket face on the bed, open flange up — no supports).
-// ----------------------------------------------------------------
-module pod() {
-    cw = pwr_cavity[0];
-    ch = pwr_cavity[1];
-    cd = pwr_cavity[2];
-    oh = cd + pwr_face_t;            // overall height (face on the bed)
-    ear_off = cw/2 + pod_wall + 6;   // matches shell ear holes
-    difference() {
-        union() {
-            linear_extrude(oh) offset(3) offset(-3)
-                square([cw + 2*pod_wall, ch + 2*pod_wall], center = true);
-            // ears the shell screws into (flush with the open rim)
-            for (s = [-1, 1]) translate([s*ear_off, 0, oh - 4])
-                linear_extrude(4) offset(2) offset(-2)
-                    square([12, 10], center = true);
-        }
-        // cavity (socket body + snap wings + wires straight through)
-        translate([0, 0, pwr_face_t]) linear_extrude(oh)
-            square([cw, ch], center = true);
-        // snap-in rectangular cutout in the face, R-corners per drawing
-        translate([0, 0, -eps]) linear_extrude(pwr_face_t + 2*eps)
-            offset(pwr_snap_r) offset(-pwr_snap_r)
-                square([pwr_snap_w, pwr_snap_h], center = true);
-        // ear screw pilots (M3 self-tap)
-        for (s = [-1, 1]) translate([s*ear_off, 0, oh - 4 - eps])
-            cylinder(d = 2.7, h = 4 + 2*eps);
-    }
-}
-
-// ----------------------------------------------------------------
 // desk stand: raked slot in a wedge block
 // ----------------------------------------------------------------
 module stand() {
-    groove_y = 40;   // slot centre-line at the top face
     difference() {
         // low lip in front (must not cover the bottom letter row:
-        // lip 13 high ⇒ ~9 mm of slab hidden < 12 mm bezel), tall
-        // support horn behind where the slab leans on it
+        // lip 13 high ⇒ ~9 mm of slab hidden < 12 mm bezel — this
+        // relationship is about lip height/tilt, not stand_depth, so
+        // it's unaffected by the depth-budget fix), tall support horn
+        // behind where the slab leans on it — horn pushed back
+        // (42/66 -> 60/84) and stand_depth grown (92 -> 104) to give
+        // the wider groove room without eating into the lip.
+        //
+        // First attempt at this fix (groove_y alone, z-offset left at
+        // 4) technically avoided the lip but left only 0.7mm of floor
+        // material at the groove's lowest pinch point (~Y=70) —
+        // found by plotting the actual wedge-minus-slot cross-section
+        // (point-sampled, not just corner coordinates), not by
+        // rendering and eyeballing it, which had already produced one
+        // wrong "looks fine" read on this same shape. z-offset raised
+        // 4 -> 8, giving 4.69mm at that pinch point instead — checked
+        // the same way. Matching offset in assembly()'s device
+        // positioning (4.6 -> 8.6) needs to move with this if it
+        // changes again.
         rotate([90, 0, 90]) linear_extrude(stand_w, center = true)
             polygon([
                 [0, 0], [stand_depth, 0],
-                [stand_depth, 8], [66, stand_h],
-                [42, stand_h], [32, 13], [24, 13], [0, 5]
+                [stand_depth, 8], [84, stand_h],
+                [60, stand_h], [32, 13], [24, 13], [0, 5]
             ]);
-        translate([0, groove_y, 4]) rotate([-tilt, 0, 0])
+        translate([0, groove_y, 8]) rotate([-tilt, 0, 0])
             translate([-stand_w/2 - 5, -groove_w/2, 0])
                 cube([stand_w + 10, groove_w, 60]);
     }
@@ -548,15 +705,11 @@ module stand() {
 module device() {
     color("#20242c") faceplate();
     color("#2a2f3a") translate([0, 0, slab_t]) rotate([180, 0, 0]) shell();
-    if (pwr_pod)
-        color("#2a2f3a") translate([0, -face_w/2 + pod_up, slab_t])
-            rotate([0, 180, 0])  // open rim against the lid, face outward
-            translate([0, 0, -(pwr_cavity[2] + pwr_face_t)]) pod();
 }
 
 module assembly() {
     color("#181b22") stand();
-    translate([0, 40 - groove_w/2 + groove_clr/2, 4.6])
+    translate([0, groove_y - groove_w/2 + groove_clr/2, 8.6])
         rotate([-tilt, 0, 0]) translate([0, 0, face_w/2])
             rotate([0, 0, 180]) rotate([90, 0, 0])
                 translate([0, 0, -0]) device();
@@ -569,8 +722,8 @@ if (part == "diffuser")  diffuser();
 if (part == "coupon_diffuser") coupon_diffuser();
 if (part == "shell")     shell();
 if (part == "stand")     stand();
-if (part == "pod")       pod();
 if (part == "coupon")    coupon();
+if (part == "pod_coupon") pod_coupon();
 if (part == "assembly")  assembly();
 if (part == "face2d")    // quick legibility check, reads correctly in top view
     for (r = [0:cells-1], c = [0:cells-1])

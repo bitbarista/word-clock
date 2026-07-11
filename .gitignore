@@ -1,4 +1,7 @@
-# regenerable exports
-build/
-*.stl
+# slicer project files (not print-ready output, just working state)
 *.3mf
+
+# PlatformIO build cache — present on this branch's working tree even
+# though the firmware source (and its own matching .gitignore) lives
+# on the firmware branch, not main
+.pio/

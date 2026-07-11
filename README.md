@@ -24,23 +24,30 @@ small public repo ([word-clock-demo](https://github.com/bitbarista/word-clock-de
 for GitHub Pages hosting — this repo stays private, only those two
 static pages are public.
 
-**Status: v0.1.0 — model validated (manifold) but NOT yet test-printed.
-Print the coupon before committing to the 184 mm faceplate. Firmware
-not started.**
+**Status: v0.1.6 — model validated (manifold + collision-checked).**
+Faceplate, shell, and stand have all been printed and iterated on
+previous revisions, but v0.1.6 changed the depth budget, the
+bezel/pocket wall, the power socket mount, and (to actually fit the
+thicker slab) the stand's own wedge geometry (see Enclosure stack) —
+**reprint the faceplate, shell, and stand** before assembling against
+this revision; the old stand's slot was cut for the pre-v0.1.6 slab
+thickness and won't fit. Firmware exists on the `firmware` branch (fw
+v0.3.0, not yet
+merged to `main`), not started from scratch.
 
 ## Hardware (BOM)
 
 | Item | Notes |
 |---|---|
 | 16×16 WS2812B flexible panel | 160×160 mm, 10 mm pitch — the common ~£12–15 one |
-| Seeed XIAO ESP32S3 | WiFi NTP + web UI + animations; swapped from a generic "supermini" after none of three boards (two supermini vendors + this one) fit the cradle — the XIAO's dimensions are measured and tightly controlled |
+| Seeed XIAO ESP32S3 **or** a generic ESP32-S3 "supermini" | WiFi NTP + web UI + animations. Originally XIAO-only after none of three boards (two supermini vendors + the XIAO) fit an earlier snug cradle — since resolved (v0.1.4): the cradle is now a universal locator (`brd_w`/`brd_l`) sized to fit either, single end-stop only (see Power & access) |
 | 5 V / 3 A USB-C supply | into the rear power breakout; see power budget below |
-| Snap-in USB-C power socket, 4P PD pigtail | CHT-TS023R style, 5 A; 2P variant won't work with C-to-C cables |
+| Snap-in USB-C power socket, 4P PD pigtail | CHT-TS023R style, 5 A; 2P variant won't work with C-to-C cables. Mounts directly into the shell now, no separate pod part or screws — see Power & access |
 | 2× 5.1 kΩ resistors | CC1/CC2 → GND if the socket's CC wires are unterminated |
-| 1000 µF electrolytic (≥6.3 V) | across 5 V/GND at the panel pigtail |
+| 1000 µF electrolytic (≥6.3 V) | across 5 V/GND at the panel pigtail. **Check the physical size**: standard 1000µF caps run 8–10mm diameter × 11.5mm+ tall (leaded or SMD, height doesn't change with package) — this needs the deepened back cavity (v0.1.6, see Enclosure stack), it did not fit the original 3mm gap |
 | 330 Ω resistor | in the data line to DIN |
-| 3 mm foam sheet, cut into 8× 8×8 mm pads (not a full sheet) | behind the panel, pressed by the shell's pad grid — see Ventilation below for why it's pads, not a sheet |
-| 4× M3×8 self-tapping screws | shell → faceplate corner posts |
+| 3 mm foam sheet, cut into 12× 8×8 mm pads (not a full sheet) | behind the panel, pressed by the shell's pad grid — see Ventilation below for why it's pads, not a sheet |
+| 4× M3×**16** self-tapping screws | shell → faceplate corner posts. **Not M3×8** — the screw has to clear 6.4mm of shell material before reaching the post at all; M3×8 leaves just 1.6mm of thread engagement, M3×16 gives ~9.6mm (see Enclosure stack) |
 | Level shifter (optional) | 3.3 V data usually drives WS2812B fine at 5 V; add 74AHCT125 if flaky |
 | Schottky diode, 1N5817 (on hand — 1N5822/1N5819 also fine) | pod 5 V → ESP32 5 V pin, cathode toward the ESP32 — the XIAO likely has no onboard VBUS diode, so without this, don't plug in the pod and a flashing cable at the same time during any future case-open debugging session (routine use never exposes the port — see Power & access). Must be Schottky (low forward drop): ordinary rectifiers (1N4007/5399/5408) work but sag the ESP32's 5 V more under WiFi TX current spikes; fast-recovery types (FR107/FR207) and small-signal diodes (1N4148) are unsuitable here. 1N5817 is only 1 A vs the others' 3 A, but D1 carries just the ESP32's own draw (panel is fed direct, bypassing D1), so that's plenty of margin |
 
@@ -58,7 +65,7 @@ over USB on the bench, not a quick cable plug-in through the wall. The
 old corner-cradle-against-the-wall design (and the faceplate's
 matching tray-wall notch) is what earlier revisions of this doc
 describe. **Faceplate reprinted** to drop the now-unused notch —
-`STLs/faceplate.stl` is current (plain closed tray wall); an
+`build/faceplate.stl` is current (plain closed tray wall); an
 already-printed faceplate from before this change still works fine
 (the notch was always harmless, just unused), it just has the old
 opening.
@@ -186,16 +193,19 @@ for arbitrary animation frames. Two-layer solution:
    we ever add can exceed the budget (and it doubles as brown-out
    protection for the shared 5 V rail).
 2. **Separate power inlet — panel current never touches the dev
-   board.** A panel-mount USB-C power socket (pigtail type) sits in
-   a small **pod** on the back of the shell — bottom-middle, above
-   the stand horn, invisible in use. The socket body is too deep to
-   live inside the slab (the interior is all panel + foam), so the
-   pod bump-out provides its depth; it's a separate 10-minute print
-   that screws onto the lid from the inside over a matching cutout.
+   board.** A panel-mount USB-C power socket (pigtail type) mounts
+   bottom-middle, above the stand horn, invisible in use. **v0.1.6:
+   mounts directly into the shell now** — no separate pod part, no
+   screws. Used to be a bump-out part screwed on from the inside
+   (meant removing it required separating the whole shell from the
+   faceplate to reach those screws); now that the shell has real
+   interior depth (see Enclosure stack), the socket's snap-fit flange
+   passes through the shell's own material directly, retained purely
+   by its own snap wings, same as before, just without the extra part.
    Its 5 V pigtail feeds the panel pigtail AND the ESP32 5 V pin
    directly; grounds common (wires just lie in the open cavity between
    the foam pads — see Ventilation, no channel-cutting needed). The
-   ESP32's own USB-C — now in an internal cradle above the pod, not a
+   ESP32's own USB-C — in an internal cradle above the pod, not a
    side-wall port (see Power & access) — is bench-flash-only pre-
    assembly, then OTA.
 
@@ -225,13 +235,16 @@ for arbitrary animation frames. Two-layer solution:
    and can't protect a laptop from rail backfeed.
 
 Socket: **snap-in pigtail USB-C female, 4P PD/fast-charge variant**.
-The pod face is its mounting panel: **14.7 × 5.4 mm R1.3 cutout in a
-2.0 mm face** (measured off the actual delivered part, long side
-trimmed 0.3 mm after a test fit — supersedes the earlier CHT-TS023R
-drawing estimate), its long axis aligned with
-the two mounting ears; the socket snaps in from the outside, body and
-wires pass straight through into the enclosure. Total pod height is
-10.0 mm.
+Mounting cutout: **14.7 × 5.4 mm R1.3** (measured off the actual
+delivered part, long side trimmed 0.3 mm after a test fit — supersedes
+the earlier CHT-TS023R drawing estimate). The socket snaps directly
+into the shell's own `lid_t` (2.4mm) now — the verified-working figure
+from the old separate-pod part was 2.0mm exactly, so this is 0.4mm
+thicker than what was actually tested; worth confirming the snap
+wings still engage properly on the physical part rather than assuming.
+Cavity behind it for body + wing deployment is unchanged at 8mm deep
+(that number was always fine — see Enclosure stack for what actually
+needed fixing).
 
 - **Buy the 4P fast-charge/PD pinout (V+, V−, CC1, CC2) — not the
   2P, and not the 4P "data" pinout (D+/D−).** Without CC pins a
@@ -246,7 +259,7 @@ wires pass straight through into the enclosure. Total pod height is
 - **It must present 5 V.** These passthrough sockets don't negotiate
   voltage themselves, but verify with a multimeter before first
   connection to the panel — 9/12/20 V kills WS2812s instantly.
-- Pod dimensions (`pwr_snap_w/h/r`, `pwr_face_t`, `pwr_cavity`) are
+- Socket mount dimensions (`pwr_snap_w/h/r`, `pwr_cavity`) are
   Customizer parameters — adjust them if a future socket differs.
 
 Supporting cast, standard WS2812 practice: **1000 µF electrolytic**
@@ -344,11 +357,11 @@ Every part is a plain single-colour print — no filament swaps.
 | Faceplate (stencil + tray) | `part="faceplate"` | letters on the bed | dark |
 | Baffle lattice (drop-in) | `part="lattice"` | flat on bed | dark |
 | Diffuser sheet (drop-in) | `part="diffuser"` | flat on bed, 100 % infill | white or clear — experiment |
-| Rear shell | `part="shell"` | outer face on bed | dark |
-| Desk stand | `part="stand"` | flat base on bed | dark |
-| Power pod | `part="pod"` | socket face on bed | dark |
+| Rear shell (incl. power socket mount) | `part="shell"` | outer face on bed | dark |
+| Desk stand (**reprint for v0.1.6** — slot resized for the new slab thickness) | `part="stand"` | flat base on bed | dark |
 | Test coupon | `part="coupon"` | letters on bed | dark |
 | Coupon diffuser strips | `part="coupon_diffuser"` | flat, 100 % infill | one per candidate |
+| Power socket coupon | `part="pod_coupon"` | flange face on bed | any — test print, not visible |
 
 Export: `openscad -o build/<part>.stl -D 'part="<part>"' wordclock.scad`
 (STLs are not committed — regenerate from source.)
@@ -475,20 +488,185 @@ thin fast.
 
 1.2 stencil plate → drop-in diffuser sheet (t_diff) → drop-in baffle
 lattice (1.2 mm walls landing between LEDs, depth = 12 − t_diff) →
-panel (2.0) → foam pads (3.0) → shell's pad grid presses the whole
-stack against the stencil. Shell lip registers inside the tray wall,
-four M3 self-tappers into the corner posts. Power enters the rear
-pod; the ESP32 sits in an internal cradle above the pod, flashed via
-USB on the bench pre-assembly and OTA thereafter (see Power & access).
+panel (2.0) → back cavity (13.0, houses foam pads + all electronics —
+see below) → shell's pad grid presses the whole stack against the
+stencil. Shell lip registers inside the tray wall, four M3×16
+self-tappers into the corner posts. Power enters via a socket mounted
+directly into the shell; the ESP32 sits in an internal locator above
+it, flashed via USB on the bench pre-assembly and OTA thereafter (see
+Power & access).
 
-Face is 184×184 mm, slab ~21 mm thick, 12° rake in the stand.
+Face is 184×184 mm, slab **31 mm** thick (was 21mm — see v0.1.6
+below), 12° rake in the stand.
 
 Assembly order: faceplate letters-down on the desk → diffuser sheet
 into the opening → lattice on top of it → panel (data pigtail routed
-toward the ESP32's internal cradle above the pod) → foam pads at the
-12 grid points (see below — wires just lie in the open cavity between
-them, no channel-cutting needed anymore) → shell with ESP32 and pod
-wiring attached → four screws.
+toward the ESP32's internal locator) → foam pads at the 12 grid points
+(wires just lie in the open cavity between them, no channel-cutting
+needed) → shell with ESP32, power socket, and wiring attached → four
+M3×16 screws.
+
+### v0.1.6 — depth-budget audit: this stack didn't actually fit its own contents
+
+Caught late, after several rounds of shell-only rework: `foam_t` (now
+`back_t`) and `panel_t` were both round numbers nobody had checked
+against what actually has to physically live in them. Every check run
+during the ventilation/pad-grid/cradle rework was a 2D XY-plane
+`intersection()` — real and necessary, but it never once verified the
+Z-axis (depth) against real component heights. Full audit, one pass,
+covering everything rather than patching each part in isolation:
+
+| Component | Old allowance | Real requirement | Fix |
+|---|---|---|---|
+| ESP32 XIAO (PCB→top of USB-C shell) | `foam_t` = 3.0mm | 4.49mm (measured, this project's own calipers) | Fit by `back_t` = 13mm |
+| ESP32 SuperMini | 3.0mm | Unverified, no reason to expect shorter | Fit by `back_t` = 13mm |
+| WS2812B panel (PCB + LEDs) | `panel_t` = 2.0mm | 1.8mm (measured: 0.25mm bare FPCB, 1.8mm total with LEDs) | Already fit — confirmed, not assumed |
+| 1000µF capacitor | 3.0mm | 11.5mm minimum, any package (leaded or SMD — height doesn't change with mounting style) | Fit by `back_t` = 13mm (the tallest item — sets the whole budget) |
+| Power socket | separate bump, own cavity (8mm) | 8mm (already correct — an earlier audit pass flagged this as broken based on a stale comment that was never reconciled with the real `pwr_cavity` value; retracted) | No change needed, relocated (see below) |
+| Corner screw (M3×8) | 6.4mm clearance + 1.6mm engagement | ~6mm+ engagement for a reliable self-tap joint | M3×16 (~9.6mm engagement) |
+| Panel lateral retention | none — bezel pocket was `baffle_d` deep only, panel sat in the much bigger tray opening beyond it | snug pocket matching the lattice/diffuser fit | Pocket extended through `panel_t` too |
+
+**No bump-outs** — that was ruled out explicitly (a flat back was a
+firm requirement), so instead of a local pocket for just the
+capacitor, `back_t` grew to fit the *tallest* real component (the
+cap) with margin, and everything else — the ESP32, the relocated
+power socket — simply inherits that same headroom for free rather
+than needing its own separate accommodation. `wall_top` and `slab_t`
+both derive from `back_t` automatically, so this is one parameter
+change cascading through the whole model, not a scattered patch.
+
+**Power socket relocated, not just re-verified.** While auditing this,
+reconsidered whether the socket should even stay as a separate bump-out
+part at all: with real interior depth now available, it mounts
+directly into the shell's own material instead — snap-fit flange
+through the shell, cavity for wing deployment extending into the
+(now roomy) interior. This removes the separate pod part *and* its
+mounting screws entirely (retained purely by its own snap wings, same
+mechanism as before) — one less part to print, and it means literally
+every remaining screw on the assembled device is the same 4 corner
+screws, all accessible from outside. **One number not re-verified
+against the physical part:** the socket's flange now sits against the
+shell's `lid_t` (2.4mm) rather than the old dedicated pod face
+(2.0mm, the figure actually confirmed working) — 0.4mm thicker than
+what was tested. **`part="pod_coupon"`** is a small standalone test
+piece (40×40×10.4mm) of exactly this local geometry — flange cutout
+through `lid_t`, cavity behind it — print that and check the real
+socket snaps in properly before committing to a full shell print.
+
+**Panel now has a real pocket.** The bezel ring used to extrude only
+`baffle_d` deep, with its inner opening matching the lattice/diffuser
+fit — but nothing beyond that depth constrained the panel at all; the
+tray wall's own opening (179.2mm) is dramatically bigger than the
+160mm panel, so it just sat loose. Extended the pocket depth to
+`baffle_d + panel_t` so the same 0.5mm/side clearance the
+lattice/diffuser already get now also captures the panel.
+
+**Filament reduction, same pass.** That pocket wall used to be solid —
+~11.5mm wide around the full perimeter, `baffle_d` deep, most of which
+a slicer would fill as infill regardless of settings. Now that it's
+even deeper (`baffle_d + panel_t`, capturing the panel too), rebuilt
+it as a hollow "frame within a frame": thin outer + inner walls
+(`bezel_wall_t` = 2mm) connected by sparse ribs (`bezel_rib_n` = 4 per
+straight edge), with a thin solid cap (`bezel_cap_t` = 1.5mm) at the
+front for a consistent visible bezel surface. Rough volume estimate:
+~95cm³ solid → ~53cm³ hollow, **~44% less material** despite the
+pocket being deeper than before. Checked with `intersection()` against
+the corner posts (ribs sit in the same radial band, near the corners,
+by design) — clear.
+
+**Corner posts needed bracing.** Post height is `wall_top - t_front`,
+which grew from 17.4mm to 27.4mm along with everything else in this
+pass — a 7mm-diameter post that slender is a real snap risk, especially
+under the torque of driving in the (now longer) M3×16 screws. Added
+two ribs per post (`post_rib_w`), connecting each to the tray wall in
+both X and Y. Kept clear of the shell's lip zone (the top `lip_h` of
+the post, where the shell's lip registers and routes around the post)
+by an explicit `post_rib_clr` = 2mm margin.
+
+**Bug caught after the fact:** `rib_out` (how far each rib reaches
+toward the tray wall) was computed as an absolute coordinate from the
+faceplate's centre, then used as a local offset from the post's own
+already-translated position — effectively adding `post_off` (~83.5mm)
+twice, so the ribs shot ~81.6mm past the tray wall into open space.
+The `intersection()` check against the lip zone didn't catch it: that
+check only tests Z-separation from the lip's height band, which the
+ribs satisfied regardless of how wrong their XY position was — it
+verified the one thing that had been asked about without checking the
+ribs' overall bounds against the faceplate outline at all. Fixed
+(`rib_out` now correctly subtracts `post_off`) and re-checked two
+ways: `intersection()` against the lip zone (empty, as before) *and*
+`difference()` against the faceplate's own outer boundary — any rib
+material left over after subtracting the full outline would mean it
+pokes outside; empty, confirmed actually contained this time.
+
+All of the above re-verified: manifold check on faceplate, shell, and
+the full assembly, plus `intersection()` checks covering the new
+pocket depth, the relocated socket mount, the post ribs against the
+lip zone, and the existing pad grid/vents/cradle/lip ring/posts — all
+clear.
+
+### The stand never got updated for the new slab thickness
+
+Missed entirely during the v0.1.6 depth-budget work — `groove_w`
+(the stand's slot width, sized to the slab) is a formula
+(`slab_t + groove_clr`) and scaled automatically when `slab_t` grew
+21mm → 31mm. But the wedge it's cut *into* (`stand_depth`, `stand_h`,
+the polygon in `stand()`) was all hardcoded and didn't move — so the
+now-10mm-wider slot cut clean through the front lip, collapsing the
+lip and support horn into a flat shell. Confirmed by rendering (image
+inspection, not just the manifold flag — manifold only means
+watertight, it doesn't mean "the slot stayed where it should").
+
+First fix attempt (moving `groove_y` back to clear the lip) was
+incomplete: it stopped the slot from touching the lip, but left only
+**0.7mm** of material at the groove's lowest point — found by
+computing the actual wedge-minus-slot cross-section as a point-sampled
+2D region (`stand_depth`/`stand_h`/polygon vs. the slot cutter's real
+transformed geometry), not by eyeballing a 3D render, which had
+already produced one wrong "looks fine" read on this exact shape.
+Raised the slot's Z-offset 4→8 (and the matching offset in
+`assembly()`'s device positioning, 4.6→8.6 — the two have to move
+together, there's no formula linking them) to get 4.69mm of margin at
+that pinch point instead. Confirmed the fix with the same cross-section
+method, plus a clean OpenSCAD `projection()` silhouette (a reliable
+2D read, unlike the perspective renders that had already been
+ambiguous twice on this shape) — lip, valley, and back wall all
+present and solid.
+
+Changed: `stand_depth` 92→104, horn position in the polygon 42/66→
+60/84, `groove_y` 40→54 (now a shared top-level parameter — it used
+to be a local variable in `stand()` *and* a separately hardcoded `40`
+in `assembly()`, silently able to drift out of sync), slot Z-offset
+4→8. Re-verified manifold on `stand()` and the full `assembly()`.
+
+### The pad grid never got updated for the new cavity depth either
+
+Same root cause as the stand, caught by actually sweeping for it
+afterward instead of waiting for it to surface part by part.
+`pad_h` (1.0mm) was sized when the cavity behind the panel was 3mm
+(`foam_t`): a short rigid nub plus the 3mm foam pad (BOM) together
+just reached the panel, foam doing most of the bridging and providing
+the actual clamping spring force. When `back_t` grew to 13mm for the
+depth-budget fix, nobody revisited this — nub + foam only reached
+4mm of the new 13mm gap, so the entire pad grid (added specifically
+because a flexible PCB matrix sags at points the corner screws can't
+reach) was clamping nothing.
+
+Checked the other candidates that could have had the same problem
+before assuming this was the only one: `cradle_h`/`esp_stop_t` (ESP32
+locator wall) and `pwr_cavity[2]` (socket cavity) — neither was ever
+meant to span the cavity, both are self-contained, both fine.
+`pad_h` was the only dimension whose entire job was reaching across
+the gap, and it's the one that broke.
+
+Grown to 10.5mm — nub + the still-3mm foam (BOM unchanged) now
+reaches 13.5mm against the 13mm gap, 0.5mm of deliberate interference
+so the foam is under real compression rather than just touching, same
+margin logic already used for the corner-post ribs. XY footprint is
+unchanged, so the existing pad positions are still correct — only the
+height changed. Re-verified manifold and re-ran all 5 `intersection()`
+checks (vents, posts, lip ring, ESP32 cradle, socket mount) with the
+taller pads — still clear.
 
 ### Ventilation (v0.1.1 — runs 24/7, so this isn't optional)
 
