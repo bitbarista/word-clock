@@ -68,22 +68,54 @@ post_hole_d = 2.7;
 post_relief_clr = 1.0;
 
 /* [Electronics] */
-// side the USB-C exits, viewed from the FRONT (model x is mirrored)
-usb_side = -1; // [-1:right, 1:left]
-// height of the USB-C/pocket centre above the bottom face edge
-usb_up = 28;
 // Seeed XIAO ESP32S3 — measured with calipers (checked against
 // third-party CAD bounding-box data: 22.48 x 4.46 x 17.78mm incl.
 // USB-C overhang, a close match), not taken from a vendor listing.
 // No mounting holes on this board — retained by a friction-clip
 // slide-in cradle, not screws.
+// XIAO ESP32S3 own measurements, kept for reference (no longer drive
+// the cradle geometry directly — see brd_w/brd_l below)
 esp_l = 21.12;             // board length (long axis, PCB only)
 esp_w = 17.83;              // board width (PCB only)
 esp_t = 1.15;               // bare PCB thickness
-esp_usbc_h = 4.49;          // tallest point (USB-C shell), from PCB underside
-esp_usbc_overhang = 1.49;   // USB-C shell overhang past the board's short edge
-esp_usbc_w = 9;             // USB-C shell width (spec nominal, centred on the board)
-esp_clr = 0.4;              // per-edge clearance for the friction-clip cradle
+esp_clr = 0.4;              // per-edge clearance for the locator
+// Universal locator footprint, not just XIAO-shaped: a generic
+// "ESP32-S3 supermini" is 22.52 x 18mm (espboards.dev) vs the XIAO's
+// measured 21.12 x 17.83mm — widths match to within 0.17mm, lengths
+// differ by 1.4mm (supermini longer). Sized to the wider of each
+// dimension so either board locates the same way; the shorter XIAO
+// just gets ~1.4mm of lengthwise play, which is fine now that this
+// is a locator, not a snug retention cradle (see below).
+brd_w = 18.0;
+brd_l = 22.52;
+// cradle centre — internal position above the pod, long axis along X.
+// Flash via USB on the bench pre-assembly, OTA after (see shell()
+// cradle comment) — no more side-wall port, so no usb_side/usb_up
+// needed.
+esp_x = 0;
+esp_y = 20;
+// Now a pure locator (X/Y position only), not a snug friction-fit
+// cradle — final retention comes from the soldered leads plus the
+// foam/shell closing over everything, so it doesn't need to clear
+// the USB-C connector's height (4.49mm) or grip the board tightly.
+// Wall height dropped from that 5mm to a short 1.8mm step (matches
+// the rib-thickness convention elsewhere) — real bulk reduction, and
+// unlike cutting a recess INTO the 2.4mm lid (which would thin it
+// right where it resists foam-pad compression), this only affects
+// material added on top, so lid strength is untouched.
+cradle_h = 1.8;
+// Single end-stop, not corner L-brackets — those touched both a
+// short-edge corner AND reached along the long edge, and pads on
+// both board variants run close to the board ends, not just the
+// long edges, so any corner contact risked landing on one. A single
+// straight wall across ONE short edge only contacts the end face,
+// leaves both long edges (where most of the castellated pads are)
+// and the OTHER short edge completely untouched. Placed at -X;
+// insert either board with its USB-C connector facing the open (+X)
+// end — the geometry doesn't know or care which physical end either
+// board's connector is actually on, so this is an assembly
+// instruction, not a design assumption.
+esp_stop_t = 1.8;   // end-stop wall thickness
 // Rear power pod: a shallow bump-out on the back of the shell that
 // houses a SNAP-IN panel-mount USB-C power socket at the
 // bottom-middle, above the stand horn. Feeds panel + ESP32 5V
@@ -107,6 +139,50 @@ pwr_cavity = [18, 10, 8];
 // clear of the 34 mm stand horn)
 pod_up = 48;
 pod_wall = 2.4;
+
+/* [Ventilation] */
+// rear pressure-pad grid (replaces the old full-length ribs) —
+// sparse contact points instead of long strips, so most of the back
+// stays open for airflow. The lattice already supports the panel's
+// front face at full 10 mm pitch, so these only need to take up
+// stack tolerance, not provide fine flatness.
+pad_off = 40;
+pad_w = 8;
+pad_h = 1.0;
+// extra pads reaching toward the panel corners (±80,±80 — the LED
+// grid's actual corners) rather than stopping at pad_off like the
+// inner grid. A flexible PCB matrix sags most at unsupported
+// corners, and pad_off alone leaves the outer 40mm of every edge
+// (incl. all 4 corners) with zero clamping pressure. Placed at ±70 on
+// both axes to clear the vent rows (|x|<=60), the corner posts, and
+// the lip ring — uniform on all 4 corners now that the ESP32 cradle
+// moved off the tray-wall corner (see shell()); it used to block one
+// of these and need a smaller special-cased pad instead.
+corner_pad_off = 70;
+// two rows of slots cut through the lid for passive convection
+// (device sits raked in its stand, so top/bottom is a real chimney
+// axis). Span/offset chosen to clear the pad grid (|x,y| <= pad_off)
+// and the pod cutout (|x| <= 9, at smaller |y| than vent_y), and the
+// corner posts (post_off) — see shell() for the clearance reasoning.
+// (The ESP32 cradle no longer needs a clearance mention here — it
+// moved off the tray-wall corner to an internal position near the
+// pod, well clear of both vent rows.) FIRST PASS: this hasn't been
+// thermally validated, only checked in CAD for collisions — soak-test
+// after reprint before trusting it unattended.
+// sized for a P=10W (attract-mode-level sustained load) / DeltaT=35C
+// design point via the natural-convection stack-effect scaling
+// A ~= P / (DeltaT^1.5 * sqrt(h)) -- calibrated against the worked
+// example in Electronics Cooling's "A Practical Formula for Air-
+// Cooled Boards in Ventilated Enclosures" (1997): P'=10W, DeltaT=50C,
+// h=0.2m -> 643 mm^2/vent. Scaled to our h=0.136m (2*vent_y) gives
+// ~1300 mm^2/row; 18 slots at 3x25mm = ~1315 mm^2. This scaling
+// omits the paper's own viscous-resistance term, so it's a rough
+// lower bound, not a CFD result -- soak-test before trusting it.
+vent_slot_w = 3;
+vent_slot_l = 25;
+vent_slot_n = 18;
+vent_span = 120;
+vent_y = 68;
 
 /* [Stand] */
 // backwards rake of the face
@@ -182,6 +258,12 @@ groove_w = slab_t + groove_clr;
 // w-2*r actual size for every rsq()'d part; see README fit note.)
 module rsq(w, r = corner_r) offset(r) square(w - 2*r, center = true);
 
+// stadium vent slot, long axis along Y (rotate/place as needed) —
+// width vent_slot_w, total length vent_slot_l
+module vent_slot()
+    hull() for (s = [-1, 1])
+        translate([0, s * (vent_slot_l - vent_slot_w)/2]) circle(d = vent_slot_w);
+
 // Letter voids for an n x n grid, MIRRORED so the text reads
 // correctly from the front when the plate prints letters-down
 // (model z=0 is the front face, on the bed).
@@ -210,15 +292,17 @@ module face_core(n, grid, fw, tray = true) {
         difference() { rsq(fw); square(op, center = true); }
 
     if (tray) {
-        // perimeter tray wall up to the shell seat, notched so the
-        // ESP32's onboard USB-C protrudes through the side (open to
-        // the wall top: the connector drops in as the tray closes)
-        difference() {
-            translate([0, 0, t_front]) linear_extrude(wall_top - t_front)
-                difference() { rsq(fw); rsq(fw - 2*wall_t, corner_r - 1); }
-            translate([usb_side * fw/2, -fw/2 + usb_up, wall_top])
-                cube([2*wall_t + 4, 13, 13], center = true);
-        }
+        // perimeter tray wall up to the shell seat. Used to be
+        // notched here for the ESP32's onboard USB-C to protrude
+        // through the side; the ESP32 moved to an internal cradle
+        // above the pod (flash once via USB on the bench before
+        // final assembly, OTA after that — see shell() cradle
+        // comment), so the wall is now a plain closed ring. An
+        // already-printed faceplate from before this change still
+        // has the old notch — it's just a harmless unused opening,
+        // no need to reprint on its account alone.
+        translate([0, 0, t_front]) linear_extrude(wall_top - t_front)
+            difference() { rsq(fw); rsq(fw - 2*wall_t, corner_r - 1); }
         // corner screw posts
         for (sx = [-1, 1], sy = [-1, 1])
             translate([sx*post_off, sy*post_off, t_front])
@@ -337,32 +421,40 @@ module shell() {
                                 circle(d = post_d + 2*post_relief_clr);
                     }
                 }
-            // ribs pressing the foam/panel against the baffle
+            // pressure-pad grid against the foam/panel (was
+            // full-length ribs — see [Ventilation] params). Skips
+            // (0, pad_off): it lands inside the pod cavity. Corner
+            // pads are now uniform on all 4 corners — the ESP32
+            // cradle moving off the tray-wall corner (see below)
+            // freed the one that used to need a special-cased pocket
+            // pad instead of the standard corner_pad_off square.
             translate([0, 0, lid_t]) {
-                for (x = [-40, 40]) translate([x, 0, 0])
-                    linear_extrude(1.0) square([1.6, cells*pitch], center = true);
-                for (y = [-40, 40]) translate([0, y, 0])
-                    linear_extrude(1.0) square([cells*pitch, 1.6], center = true);
+                for (x = [-pad_off, 0, pad_off], y = [-pad_off, 0, pad_off])
+                    if (!(x == 0 && y == pad_off))
+                        translate([x, y, 0])
+                            linear_extrude(pad_h) square(pad_w, center = true);
+                for (x = [-corner_pad_off, corner_pad_off], y = [-corner_pad_off, corner_pad_off])
+                    translate([x, y, 0])
+                        linear_extrude(pad_h) square(pad_w, center = true);
             }
-            // ESP32 (Seeed XIAO ESP32S3) cradle in the bottom corner,
-            // USB-C edge against the side wall. Friction-clip slide-in
-            // channel — this board has no mounting holes: two ribs
-            // grip the long edges with esp_clr slack, a backstop wall
-            // (with a gap for soldered power/data leads) stops it at
-            // the far end. NB the lid flips onto the tray, so shell y
-            // is MIRRORED vs the assembled device: device bottom =
-            // model +y, and model x = device x.
-            translate([usb_side * (face_w/2 - wall_t - 0.2 - esp_l/2),
-                       face_w/2 - usb_up, lid_t])
-                linear_extrude(esp_usbc_h + 0.5) {
-                    for (s = [-1, 1]) translate([0, s * (esp_w + esp_clr + 1.8)/2])
-                        square([esp_l, 1.8], center = true);
-                    translate([-usb_side * (esp_l + 1.8)/2, 0])
-                        difference() {
-                            square([1.8, esp_w + esp_clr + 3.6], center = true);
-                            square([2.6, 8], center = true); // wire gap
-                        }
-                }
+            // ESP32 board locator — internal, above the pod, long axis
+            // along X. Universal footprint (brd_w/brd_l) fits either a
+            // Seeed XIAO ESP32S3 or a generic ESP32-S3 "supermini" —
+            // see the brd_w/brd_l comment above for the size research.
+            // Flash once via USB on the bench before final assembly;
+            // OTA after that, so no side-wall port access needed (the
+            // old corner-cradle-against-the-wall design this replaced
+            // also cost one of the four corner pads above — see
+            // [Ventilation]).
+            //
+            // Single end-stop at -X only (see esp_stop_t comment
+            // above) — both long edges and the +X short edge are
+            // completely open. Short (cradle_h), since this only
+            // locates X/Y now rather than gripping the board.
+            translate([esp_x, esp_y, lid_t])
+                linear_extrude(cradle_h)
+                    translate([-brd_l/2 - esp_stop_t/2, 0])
+                        square([esp_stop_t, brd_w + 2*esp_clr], center = true);
         }
         // corner screws: through-hole + counterbore in the outside face
         for (sx = [-1, 1], sy = [-1, 1])
@@ -370,9 +462,6 @@ module shell() {
                 cylinder(d = 3.4, h = lid_t + lip_h + 1);
                 cylinder(d = 6.5, h = 1.4);
             }
-        // open the lip + relieve the lid rim where the USB-C passes
-        translate([usb_side * (face_w/2 - 3.2), face_w/2 - usb_up, 7.2])
-            cube([7.8, 16, 12], center = true);
         if (pwr_pod) {
             // opening under the pod (wires pass straight through)
             translate([0, face_w/2 - pod_up, -eps]) linear_extrude(lid_t + 2)
@@ -384,6 +473,18 @@ module shell() {
                            face_w/2 - pod_up, -eps])
                     cylinder(d = 3.4, h = lid_t + 2);
         }
+        // ventilation: two rows of slots through the lid (see
+        // [Ventilation] params for the clearance reasoning). Model
+        // -y is device TOP (the lid flips onto the tray, so shell y
+        // is MIRRORED vs the assembled device: device bottom = model
+        // +y), fully clear of every other feature; model +y is
+        // device BOTTOM, where the row's x-span keeps it inboard of
+        // the pod cutout.
+        for (vy = [-vent_y, vent_y])
+            for (i = [0 : vent_slot_n - 1])
+                translate([-vent_span/2 + i*(vent_span/(vent_slot_n - 1)),
+                           vy, -eps])
+                    linear_extrude(lid_t + 2*eps) vent_slot();
     }
 }
 

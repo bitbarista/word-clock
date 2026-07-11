@@ -1,3 +1,4 @@
 # regenerable exports
 build/
 *.stl
+*.3mf

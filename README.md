@@ -28,17 +28,113 @@ not started.**
 | 2× 5.1 kΩ resistors | CC1/CC2 → GND if the socket's CC wires are unterminated |
 | 1000 µF electrolytic (≥6.3 V) | across 5 V/GND at the panel pigtail |
 | 330 Ω resistor | in the data line to DIN |
-| 3 mm foam sheet | behind the panel, pressed by the shell ribs |
+| 3 mm foam sheet, cut into 8× 8×8 mm pads (not a full sheet) | behind the panel, pressed by the shell's pad grid — see Ventilation below for why it's pads, not a sheet |
 | 4× M3×8 self-tapping screws | shell → faceplate corner posts |
 | Level shifter (optional) | 3.3 V data usually drives WS2812B fine at 5 V; add 74AHCT125 if flaky |
-| Schottky diode, 1N5822 or 1N5819 (recommended) | pod 5 V → ESP32 5 V pin, cathode toward the ESP32 — the XIAO likely has no onboard VBUS diode, so without this, don't plug in the pod and a flashing cable at the same time. Must be Schottky (low forward drop): ordinary rectifiers (1N4007/5399/5408) work but sag the ESP32's 5 V more under WiFi TX current spikes; fast-recovery types (FR107/FR207) and small-signal diodes (1N4148) are unsuitable here |
+| Schottky diode, 1N5817 (on hand — 1N5822/1N5819 also fine) | pod 5 V → ESP32 5 V pin, cathode toward the ESP32 — the XIAO likely has no onboard VBUS diode, so without this, don't plug in the pod and a flashing cable at the same time during any future case-open debugging session (routine use never exposes the port — see Power & access). Must be Schottky (low forward drop): ordinary rectifiers (1N4007/5399/5408) work but sag the ESP32's 5 V more under WiFi TX current spikes; fast-recovery types (FR107/FR207) and small-signal diodes (1N4148) are unsuitable here. 1N5817 is only 1 A vs the others' 3 A, but D1 carries just the ESP32's own draw (panel is fed direct, bypassing D1), so that's plenty of margin |
 
 ### Power & access
 
-The ESP32 sits in a corner cradle with its **onboard USB-C protruding
-through the side wall** (right side viewed from the front; `usb_side`
-flips it) — flash/update firmware without opening the case, and one
-USB-C lead powers everything.
+**v0.1.2 — ESP32 moved off the tray-wall corner to an internal cradle
+above the pod** (`esp_x`/`esp_y`). Reasoning: routine USB access was
+only ever needed for firmware flashing, and this design flashes once
+on the bench pre-assembly, then updates OTA over WiFi from then on —
+so there's no ongoing need for a side-wall port. This freed the corner
+pad that used to be blocked by the cradle (see Ventilation below — all
+4 corners are now uniform). **Trade-off, gone into with eyes open:**
+if OTA ever bricks, recovery means opening the case and re-flashing
+over USB on the bench, not a quick cable plug-in through the wall. The
+old corner-cradle-against-the-wall design (and the faceplate's
+matching tray-wall notch) is what earlier revisions of this doc
+describe. **Faceplate reprinted** to drop the now-unused notch —
+`STLs/faceplate.stl` is current (plain closed tray wall); an
+already-printed faceplate from before this change still works fine
+(the notch was always harmless, just unused), it just has the old
+opening.
+
+Long axis stays along X (`esp_l`) — matching the XIAO's long edges,
+where its castellated pin pads actually are, same as the original
+wall-mounted design (an earlier pass here rotated it 90° for no good
+reason and got caught: nothing bounded the connector end, and it
+landed 5.4mm from a pressure pad, not nearly enough room for a plug).
+Retention is 4 small L-brackets, one per corner (`esp_corner_l`=2mm
+along the long edge, `esp_tab_l`=3.5mm along the short edge, meeting
+at the corner) — not full-length ribs. A 21×17.83mm FR4 board doesn't
+need continuous edge support the way the 160mm flexible LED panel
+does, so corner-only contact is plenty, and it sidesteps the whole
+wire-exit-notch-position problem from the first two attempts at this:
+the entire middle of both long edges (where the XIAO's actual pins
+are — position unknown without the physical part in hand) and both
+short edges (wherever the USB-C connector actually is) is just open.
+The long-edge arm is deliberately short (2mm, just enough to locate
+the board) rather than the 5mm first tried — it runs right alongside
+the castellated pin row, so more reach only means more risk of
+landing on a pad near the corner, for no retention benefit.
+Nothing to guess, nothing to re-verify against real pin positions
+later. Checked with `intersection()` against the pad grid, pod cavity,
+vent rows, corner posts, and lip ring — all clear.
+
+**Bug caught (v0.1.3):** `esp_clr` is documented as *per-edge*
+clearance, but the channel-width formula only added it once across
+the whole channel (`esp_w + esp_clr`) instead of once per edge
+(`esp_w + 2*esp_clr`) — the board channel was 0.4mm tighter than
+intended, on top of whatever an FDM print already eats (this project's
+own fit-notes elsewhere show 0.2–0.4mm lost to that routinely). Fixed
+both L-bracket arms to use `esp_w + 2*esp_clr`. Re-verified manifold
+and re-ran all 5 `intersection()` checks (pad grid, pod, vents, posts,
+lip ring) — still clear, the 0.4mm widening only ate into open space.
+
+**v0.1.4 — universal footprint + less bulk.** Now that this feature is
+a pure X/Y locator rather than a snug retention cradle (final
+retention is the soldered leads + the foam/shell closing over
+everything), it doesn't need to be sized to one specific board or
+clear the USB-C connector's height. Checked a generic ESP32-S3
+"supermini" against the XIAO: 22.52×18mm vs the XIAO's measured
+21.12×17.83mm — widths agree to within 0.17mm, lengths differ by
+1.4mm (supermini longer). Resized to `brd_w`=18/`brd_l`=22.52 (the
+larger of each dimension) so either board locates the same way; the
+shorter XIAO just gets ~1.4mm of lengthwise play, which doesn't matter
+for a locator. `esp_l`/`esp_w` kept as reference (the XIAO's own
+measurements), no longer wired into the cradle geometry.
+
+Wall height dropped from `esp_usbc_h + 0.5` (≈5mm, sized to clear the
+connector) to a flat `cradle_h` = 1.8mm (matches the rib-thickness
+convention used elsewhere) — real bulk reduction. Deliberately **not**
+done by cutting a recess into the 2.4mm lid itself: that would thin
+the lid exactly where it needs to resist compressive load from the
+foam pads pressing on it, trading bulk for a real strength risk.
+Shortening material added *on top* of the lid instead leaves the
+lid's own thickness untouched — same bulk win, no structural
+trade-off. Re-verified manifold and re-ran all 5 `intersection()`
+checks after the footprint grew ~1.4mm longer — still clear.
+
+**v0.1.5 — 4 corners → 1 end-stop (`esp_stop_t`).** The v0.1.4
+corner-bracket design had a real flaw: sizing the brackets to the
+*union* of both boards' footprints meant the shorter XIAO wasn't
+actually contained — it just had ~1.4mm of slop between end-stops
+sized for the longer SuperMini, which isn't containment, it's a
+rattle. A single rigid 4-corner cage can't snugly fit two different
+lengths on both ends at once; there's no symmetric fix for that.
+
+Resolved by not trying to contain both ends: a single straight wall
+across ONE short edge only (`esp_stop_t` = 1.8mm thick, spanning
+`brd_w + 2*esp_clr`), the other short edge and both long edges left
+completely open. Both boards register against the same stop
+regardless of length; the longer SuperMini's extra 1.4mm just extends
+further into already-open space. Also lower pad-collision risk than
+the old L-brackets: those touched a short-edge corner *and* reached
+along the long edge (where most castellated pads run on both board
+variants — pads come close to the board ends too, not just the long
+edges, per physical inspection), whereas a single short-edge wall only
+contacts the end face.
+
+The geometry doesn't encode which end either board's USB-C connector
+is on — genuinely can't, no verified pin/connector position data for
+either board. **Assembly instruction, not a design assumption:**
+insert the board with its connector facing the open end (away from
+`esp_stop_t`), not the stopped end. Re-verified manifold and all 5
+`intersection()` checks (pad grid, pod, vents, posts, lip ring) —
+clear.
 
 **Fit note (ESP32 board swap):** the cradle was originally sized from
 a generic "ESP32-S3 supermini" guess and didn't fit any of three real
@@ -52,10 +148,11 @@ short edge by 1.49mm, centred on that edge, no mounting holes. Cross-
 checked against third-party CAD bounding-box data (22.48 x 4.46 x
 17.78mm including the connector overhang) — a close match, so these
 are the numbers `esp_l`/`esp_w`/`esp_usbc_h` etc. are built from.
-Retention is an unchanged friction-clip slide-in channel (two ribs +
-a backstop wall with a wire gap) since the XIAO has no mounting
-holes either — just resized, with a real `esp_clr` (0.4mm) clearance
-this time instead of folding tolerance into the board-size variable.
+Retention is a friction-clip cradle since the XIAO has no mounting
+holes, with a real `esp_clr` (0.4mm) clearance rather than folding
+tolerance into the board-size variable. (Originally two full-length
+ribs + a backstop wall; now 4 small corner L-brackets instead — see
+Power & access for why.)
 
 ### Power budget & protection
 
@@ -85,23 +182,36 @@ for arbitrary animation frames. Two-layer solution:
    pod bump-out provides its depth; it's a separate 10-minute print
    that screws onto the lid from the inside over a matching cutout.
    Its 5 V pigtail feeds the panel pigtail AND the ESP32 5 V pin
-   directly; grounds common (route the wires through a small channel
-   cut in the foam). The XIAO's own side USB-C becomes flash/serial
-   only.
+   directly; grounds common (wires just lie in the open cavity between
+   the foam pads — see Ventilation, no channel-cutting needed). The
+   ESP32's own USB-C — now in an internal cradle above the pod, not a
+   side-wall port (see Power & access) — is bench-flash-only pre-
+   assembly, then OTA.
 
    **⚠ The XIAO ESP32S3 does not have the onboard VBUS Schottky diode
    that some "supermini" boards use to isolate their two USB/power
    inputs** (unconfirmed against Seeed's schematic, but assume not
-   present). Without it, the flash-port USB-C and the pod's 5 V feed
+   present). Without D1, the ESP32's own USB-C and the pod's 5 V feed
    are directly tied together on the same rail with nothing stopping
-   the pod's 5 V from backfeeding into a laptop's USB port if both
-   are plugged in at once. **Don't plug both in at the same time**
-   unless/until an external Schottky diode (e.g. 1N5822/1N5819, pod
-   5 V → ESP32 5 V pin, cathode toward the ESP32) is added to
-   reinstate that isolation — this is a different failure mode than
-   the firmware USB-power-guard in `usbguard.h`, which only throttles
-   the *other* direction (a host over-powering the panel) and can't
-   protect a laptop from rail backfeed.
+   the pod's 5 V from backfeeding into a laptop's USB port if both are
+   connected at once.
+
+   This isn't really an *accidental*-connection risk anymore — the
+   port is buried in an internal cradle, so reaching it at all means
+   deliberately opening the case, which never happens during normal
+   use. But that's exactly the situation where it stays relevant:
+   **future firmware debugging** (serial monitoring, re-flashing)
+   naturally wants the panel running normally off the pod *while* a
+   laptop is also connected to the now-exposed port — same backfeed
+   hazard, just reached through a deliberate step instead of an
+   accidental one. D1 is a $0.20 part already on hand and already in
+   the schematic, so there's no reason to remove it on the strength of
+   routine access going away — **don't plug both in at the same time
+   during any future case-open debugging session** unless D1 is fitted
+   (it should be — see the schematic below). Different failure mode
+   than the firmware USB-power-guard in `usbguard.h`, which only
+   throttles the *other* direction (a host over-powering the panel)
+   and can't protect a laptop from rail backfeed.
 
 Socket: **snap-in pigtail USB-C female, 4P PD/fast-charge variant**.
 The pod face is its mounting panel: **14.7 × 5.4 mm R1.3 cutout in a
@@ -158,11 +268,24 @@ POWER
   already has CC resistors built in (only V+/V- emerge in that case).
 
   ESP32-S3 SuperMini
-  5V RAIL  ------------------------------------------------------ 5V pin
+  5V RAIL  --[ D1 ]------------------------------------------------ 5V pin
   GND RAIL ------------------------------------------------------ GND pin
 
+  D1: pod 5V -> ESP32 5V pin, cathode (banded end) toward the ESP32.
+  Reinstates the isolation the XIAO's own USB port likely lacks (see
+  note below) -- without it, don't power from the pod and a flashing
+  cable at once.
 
-  ESP32-S3's OWN programming USB-C (side of case, flashing only)
+  On hand: 1N5817 -- genuine Schottky (same 1N581x family as the
+  1N5822/1N5819 the BOM recommends), 20V/1A, VF ~0.2-0.45V. Only
+  difference from the BOM pick is current rating (1A vs 3A), which is
+  fine here: D1 only carries the ESP32's own draw, not the panel
+  (panel is fed V+/V- direct, bypassing D1) -- 1A comfortably covers
+  the XIAO even during WiFi TX current spikes.
+
+
+  ESP32-S3's OWN programming USB-C (internal cradle, bench-flash only
+  pre-assembly -- OTA thereafter, see Power & access)
 
     USB-C connector
      VBUS ----------[ onboard Schottky ]---------------------- 5V RAIL
@@ -316,6 +439,11 @@ GALAGA DONKEYKONG
 ASTEROIDS QBERT UP
 ```
 
+QBERT, not Q*BERT — the arcade game's actual title has an asterisk
+(`font.scad` has no glyph for one, so the grid spells it without).
+Kept as "Q*BERT" in prose elsewhere in this doc since that's the real
+name; only the on-grid spelling drops the asterisk.
+
 Per-minute wording fits 16×16 through letter-sharing: FOURTEEN,
 SIXTEEN, SEVENTEEN, EIGHTEEN, NINETEEN carry FOUR, SIX, SEVEN, EIGHT,
 NINE as prefixes; TWONE = TWO+ONE, THREELEVEN = THREE+ELEVEN,
@@ -336,17 +464,98 @@ thin fast.
 
 1.2 stencil plate → drop-in diffuser sheet (t_diff) → drop-in baffle
 lattice (1.2 mm walls landing between LEDs, depth = 12 − t_diff) →
-panel (2.0) → foam (3.0) → shell ribs press the whole stack against
-the stencil. Shell lip registers inside the tray wall, four M3
-self-tappers into the corner posts. Power enters the rear pod; the
-ESP32's USB-C pokes through the side wall for flashing.
+panel (2.0) → foam pads (3.0) → shell's pad grid presses the whole
+stack against the stencil. Shell lip registers inside the tray wall,
+four M3 self-tappers into the corner posts. Power enters the rear
+pod; the ESP32 sits in an internal cradle above the pod, flashed via
+USB on the bench pre-assembly and OTA thereafter (see Power & access).
 
 Face is 184×184 mm, slab ~21 mm thick, 12° rake in the stand.
 
 Assembly order: faceplate letters-down on the desk → diffuser sheet
-into the opening → lattice on top of it → panel (data pigtail to the
-ESP32 corner) → foam (cut a channel for the power wires) → shell with
-ESP32 and pod wiring attached → four screws.
+into the opening → lattice on top of it → panel (data pigtail routed
+toward the ESP32's internal cradle above the pod) → foam pads at the
+12 grid points (see below — wires just lie in the open cavity between
+them, no channel-cutting needed anymore) → shell with ESP32 and pod
+wiring attached → four screws.
+
+### Ventilation (v0.1.1 — runs 24/7, so this isn't optional)
+
+The original design pressed a **solid** 3 mm foam sheet against the
+panel's full back face, sealed inside an otherwise-unvented shell —
+fine mechanically, bad thermally. WS2812B panels dissipate real heat
+(firmware caps sustained draw at 2.5 A/5 V = 12.5 W via
+`setMaxPowerInVoltsAndMilliamps`), and running attract-mode content
+unattended on a desk for hours had no way to shed that heat: sealed
+PETG-GF shell, foam insulating the one surface that would otherwise
+convect.
+
+Fixed two ways, both in `shell()`:
+
+- **Pressure ribs → pad grid.** The old ribs were already only 4 thin
+  strips (not a full pad), so the real culprit was the *foam*, not the
+  ribs — but a "#"-shaped pair of full-length strips still blocks two
+  continuous bands across the whole back. Replaced with a sparse 3×3
+  grid of 8×8 mm pads (`pad_off`/`pad_w`/`pad_h`), skipping the one
+  point that lands in the pod cavity — 8 pads total. The lattice
+  already supports the panel's front face at full 10 mm pitch, so the
+  rear pads only need to take up stack tolerance, not hold the panel
+  flat on their own. Foam gets cut to match: pads-worth of small
+  squares, not a sheet — most of the back is now open air.
+
+  **Corner pads:** the panel is a *flexible* PCB matrix, and the 3×3
+  grid alone (reaching only ±`pad_off` = ±40) leaves the outer 40 mm
+  of every edge — including all four corners at (±80,±80), the LED
+  grid's actual extent — with zero clamping pressure, exactly where a
+  flexible board sags most. Added pads at all 4 corners
+  (±`corner_pad_off` = ±70 on both axes) reaching much closer to the
+  corners, checked clear of the vent rows, corner posts, and lip ring.
+  Uniform on all 4 now — an earlier pass here had the ESP32 cradle
+  still parked in one of the corners, which cost that corner a full
+  pad and needed a smaller special-cased one instead; moving the
+  cradle to an internal position above the pod (see Power & access)
+  freed it up, so this is simpler than it used to be, not more
+  complex.
+- **Vent slots through the lid.** Two rows of 18 slots each, 3×25mm
+  (`vent_slot_w/l/n`, `vent_span`, `vent_y`), positioned to clear the
+  pad grid, the ESP32 cradle, the pod cutout, and the corner posts —
+  checked with `intersection()` against each (all empty, OpenSCAD
+  2021.01). Rows sit at the device's top and bottom edges (**shell y
+  is mirrored vs the assembled device** — see the cradle comment in
+  `shell()`) for a passive chimney effect, since the stand racks the
+  face at a real angle: cool air in low, warm air out high, no fan.
+
+  Sizing isn't a guess: the natural-convection stack-effect scaling
+  A ≈ P / (ΔT^1.5 · √h), calibrated against the worked example in
+  *Electronics Cooling*'s "A Practical Formula for Air-Cooled Boards
+  in Ventilated Enclosures" (1997) — P′=10 W, ΔT=50°C, h=0.2m →
+  643 mm²/vent — scaled to our h=0.136m (2×`vent_y`). Designed for
+  P=10W (attract-mode-level sustained load, not just the ~3W word-
+  display baseline) and ΔT=35°C, which calls for ~1300 mm²/row; 18
+  slots at 3×25mm ≈ 1315 mm²/row. The original 9-slot pass (~291 mm²)
+  only covered the best case (3W, 50°C rise) — undersized by 3–9×
+  for realistic sustained load, hence the resize.
+
+  This is still a rough lower bound, not CFD: the scaling omits the
+  paper's own viscous flow-resistance term (real required area is
+  probably somewhat *more* than this), and it's calibrated on a
+  generic populated-board enclosure, not this specific flat-panel-
+  near-vents geometry.
+
+No filament swap needed — PETG-GF doesn't flex well enough for a
+cantilever/spring-rib alternative anyway, and rigid ribs need the
+foam's compressibility to take up tolerance regardless, so the pad
+grid was the change, not the rib material.
+
+**Not yet thermally validated** — the collision checks and the sizing
+calc above are both just paper (well, CAD). Soak-test after reprinting
+(attract mode, few hours, ambient desk conditions, check the panel/
+ESP32 aren't running hot to the touch) before trusting this unattended
+long-term; `vent_slot_n`/`vent_span` are easy to bump further if it's
+still running warm.
+
+**Reprint required:** `shell()` only — the stencil, diffuser, lattice,
+and panel side of the stack are unchanged.
 
 ## Firmware (next phase)
 
