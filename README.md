@@ -10,8 +10,19 @@ DONKEY KONG, ASTEROIDS, Q*BERT). Enclosure is the "subtle" concept: a plain dark
 raked desk wedge, so it passes at a work desk; the arcade lives in the
 light, not the shell.
 
-Interactive concept render (live simulation of face + animations):
-<https://claude.ai/code/artifact/36cffa93-97e1-411f-91b9-300dda619f61>
+Interactive firmware simulator (live face + animations, mirrors the
+real firmware logic — word grid, transitions, attract mode, hidden
+words on the actual `wordsMin`/`attractMin` timers):
+<https://bitbarista.github.io/word-clock-demo/simulator.html>
+
+Earlier concept render (enclosure concept comparison, arcade cabinet
+vs. subtle wedge):
+<https://bitbarista.github.io/word-clock-demo/wordclock-concepts.html>
+
+Both pages are archived source in `docs/` in this repo, mirrored to a
+small public repo ([word-clock-demo](https://github.com/bitbarista/word-clock-demo))
+for GitHub Pages hosting — this repo stays private, only those two
+static pages are public.
 
 **Status: v0.1.0 — model validated (manifold) but NOT yet test-printed.
 Print the coupon before committing to the 184 mm faceplate. Firmware
