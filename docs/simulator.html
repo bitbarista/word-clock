@@ -223,6 +223,10 @@
                 <button onclick="act('attract',4)">&#9608; Cannon duel</button>
                 <button onclick="act('attract',5)">&#9608; Matrix</button>
                 <button onclick="act('attract',6)">&#9608; Insert coin</button>
+                <button onclick="act('attract',7)">&#9608; Asteroids</button>
+                <button onclick="act('attract',8)">&#9608; Galaga</button>
+                <button onclick="act('attract',9)">&#9608; Donkey Kong</button>
+                <button onclick="act('attract',10)">&#9608; Q*bert</button>
                 <button class="acc" onclick="act('transition',-1)">&#9654; Play transition</button>
               </div>
             </div>
@@ -400,9 +404,15 @@ const PAC5_OPEN=[".XXX.","XXXX.","XXX..","XXXX.",".XXX."], PAC5_CLOSED=[".XXX.",
 const GHOST5=[".XXX.","XXXXX","XXXXX","XXXXX","X.X.X"];
 const CANNON=["...X...","..XXX..","XXXXXXX","XXXXXXX"];
 const BOOM_A=["..X..",".....","X.X.X",".....","..X.."], BOOM_B=["X.X.X",".X.X.","X.X.X",".X.X.","X.X.X"];
+const SHIP=["..X..",".XXX.","XXXXX",".X.X."];
+const ROCK_BIG=[".X.X.","XXXXX","X.XXX","XXXXX",".X.X."];
+const ROCK_SMALL=[".X.","XXX",".X."];
+const BEE_SPR=["..X..",".XXX.","XXXXX","X.X.X"];
+const DK_SPR=["XX.XX","XXXXX",".XXX.","X.X.X"];
 const MATRIX_HEAD="#d9ffdc", MATRIX_G1="#4be15f", MATRIX_G2="#2e9440", MATRIX_G3="#1c5c2a";
 const PAC_YELLOW="#ffd93b", GHOST_RED="#ff4d4d", GHOST_CYAN="#4dd9ff", GHOST_PINK="#ffb8de", GHOST_ORANGE="#ffb847";
 const GHOST_BLUE="#3b5bff", GHOST_FLASH="#e8ecff", SI_GREEN="#4be15f", COL_WHITE="#ffffff";
+const GALAGA_BLUE="#9fd8ff", DK_ORANGE="#ff8c3b", ASTEROID_GREY="#c8d8ff", SHIP_WHITE="#e8ecff", DK_BODY="#c8693b";
 
 /* =====================================================================
    3. ENGINE — ported from firmware/src/display.cpp + config.h
@@ -423,6 +433,7 @@ const cfg = {
 };
 const TR_RANDOM=0, TR_PAC=1, TR_MATRIX=2, TR_CANNON=3, TR_INVADER=4, TR_TETRIS=5, TR_FADE=6;
 const AT_RANDOM=0, AT_INVADERS=1, AT_GHOST=2, AT_PACCHASE=3, AT_CANNONDUEL=4, AT_MATRIX=5, AT_COIN=6;
+const AT_ASTEROIDS=7, AT_GALAGA=8, AT_DONKEYKONG=9, AT_QBERT=10, AT_COUNT=11;
 const THEME_RAINBOW=4, THEME_CUSTOM=5;   // indices into THEMES[] below (not a firmware concept yet)
 
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -468,6 +479,7 @@ function drawSprite(rows, w, h, offR, offC, color, on='X'){
     if(rows[r][c]===on && rr>=0 && rr<GRID_N && cc>=0 && cc<GRID_N) setCell(idx(rr,cc), color);
   }
 }
+function setRC(r,c,color){ if(r>=0 && r<GRID_N && c>=0 && c<GRID_N) setCell(idx(r,c), color); }
 
 // ---- virtual clock (sim-only: lets you jump time instead of waiting) ----
 let vOffsetMs = 0;
@@ -730,15 +742,103 @@ async function attractCoin(){
   }
   clearFrame(); fillCells(score, GHOST_CYAN); await showFrame(1000);
 }
+async function attractAsteroids(){
+  const shipC=2;
+  let rockR=-4, rockC=8;
+  while(rockR<8){
+    rockR+=0.6;
+    clearFrame();
+    drawSprite(SHIP,5,4,12,shipC,SHIP_WHITE);
+    drawSprite(ROCK_BIG,5,5,Math.trunc(rockR),Math.trunc(rockC),ASTEROID_GREY);
+    await showFrame(90);
+  }
+  const hitR = Math.trunc(rockR)+2;
+  for(let r=11; r>hitR; r--){
+    clearFrame();
+    drawSprite(SHIP,5,4,12,shipC,SHIP_WHITE);
+    drawSprite(ROCK_BIG,5,5,Math.trunc(rockR),Math.trunc(rockC),ASTEROID_GREY);
+    setRC(r,shipC+2,COL_WHITE);
+    await showFrame(35);
+  }
+  let lC=rockC, rC=rockC+2, lR=rockR, rR=rockR;
+  for(let step=0; step<10; step++){
+    lC-=0.9; rC+=0.9; lR+=0.4; rR+=0.4;
+    clearFrame();
+    drawSprite(SHIP,5,4,12,shipC,SHIP_WHITE);
+    drawSprite(ROCK_SMALL,3,3,Math.trunc(lR),Math.trunc(lC),ASTEROID_GREY);
+    drawSprite(ROCK_SMALL,3,3,Math.trunc(rR),Math.trunc(rC),ASTEROID_GREY);
+    await showFrame(70);
+  }
+}
+async function attractGalaga(){
+  const slots=[{r:-4,c:2,targetC:3},{r:-4,c:13,targetC:12},{r:-6,c:7,targetC:7}];
+  for(let step=0; step<20; step++){
+    clearFrame();
+    for(const s of slots){
+      if(s.r<3) s.r+=0.5;
+      if(s.c<s.targetC) s.c+=0.6; else if(s.c>s.targetC) s.c-=0.6;
+      drawSprite(BEE_SPR,5,4,Math.trunc(s.r),Math.trunc(s.c),GALAGA_BLUE);
+    }
+    await showFrame(110);
+  }
+  let dr=slots[2].r, dc=slots[2].c;
+  for(let step=0; step<14 && dr<GRID_N; step++){
+    dr+=0.9; dc += (step&1) ? 0.6 : -0.6;
+    clearFrame();
+    drawSprite(BEE_SPR,5,4,Math.trunc(slots[0].r),Math.trunc(slots[0].c),GALAGA_BLUE);
+    drawSprite(BEE_SPR,5,4,Math.trunc(slots[1].r),Math.trunc(slots[1].c),GALAGA_BLUE);
+    drawSprite(BEE_SPR,5,4,Math.trunc(dr),Math.trunc(dc),GALAGA_BLUE);
+    await showFrame(70);
+  }
+}
+async function attractDonkeyKong(){
+  const path=[
+    [2,1],[2,3],[2,5],[2,7],[2,9],[2,11],
+    [4,11],[4,9],[4,7],[4,5],[4,3],[4,1],
+    [6,1],[6,3],[6,5],[6,7],[6,9],[6,11],
+    [8,11],[8,9],[8,7],[8,5],[8,3],[8,1],
+    [10,1],[10,3],[10,5],[10,7],[10,9],[10,11],
+    [12,11],[13,11],[14,11],[15,11]
+  ];
+  for(const [pr,pc] of path){
+    clearFrame();
+    drawSprite(DK_SPR,5,4,0,0,DK_BODY);
+    setRC(pr,pc,DK_ORANGE);
+    setRC(pr,pc+1,DK_ORANGE);
+    await showFrame(70);
+  }
+}
+async function attractQbert(){
+  const CUBE_BASE="#4b5ab8", QBERT_COL="#ffd93b";
+  const level = Array.from({length:5}, ()=> Array(9).fill(CUBE_BASE));
+  async function draw(hopL){
+    clearFrame();
+    for(let l=0;l<=4;l++){
+      const w=l*2+1, startC=8-l;
+      for(let p=0;p<w;p++) setRC(6+l, startC+p, level[l][p]);
+    }
+    if(hopL>=0) setRC(6+hopL, 8-hopL, QBERT_COL);
+    await showFrame(260);
+  }
+  await draw(-1);
+  for(let l=0; l<=4; l++){
+    level[l][0]=DK_ORANGE;
+    await draw(l);
+  }
+}
 async function animAttract(which){
-  if(which===AT_RANDOM || which>6) which = rnd(AT_INVADERS, 7);
+  if(which===AT_RANDOM || which>=AT_COUNT) which = rnd(AT_INVADERS, AT_COUNT);
   switch(which){
-    case AT_INVADERS:   await attractInvaders();   break;
-    case AT_GHOST:      await attractGhost();      break;
-    case AT_PACCHASE:   await attractPacChase();   break;
-    case AT_CANNONDUEL: await attractCannonDuel(); break;
-    case AT_MATRIX:     { refreshTimeWords(); await animMatrix(nowCells, true); return; }
-    case AT_COIN:       await attractCoin();       break;
+    case AT_INVADERS:    await attractInvaders();    break;
+    case AT_GHOST:       await attractGhost();       break;
+    case AT_PACCHASE:    await attractPacChase();    break;
+    case AT_CANNONDUEL:  await attractCannonDuel();  break;
+    case AT_MATRIX:      { refreshTimeWords(); await animMatrix(nowCells, true); return; }
+    case AT_COIN:        await attractCoin();        break;
+    case AT_ASTEROIDS:   await attractAsteroids();   break;
+    case AT_GALAGA:      await attractGalaga();      break;
+    case AT_DONKEYKONG:  await attractDonkeyKong();  break;
+    case AT_QBERT:       await attractQbert();       break;
   }
   refreshTimeWords();
   await animFade(new Set(), nowCells);
