@@ -10,6 +10,7 @@ enum TransStyle : uint8_t {
 
 enum AttractAnim : uint8_t {
     AT_RANDOM = 0, AT_INVADERS, AT_GHOST, AT_PACCHASE, AT_CANNONDUEL, AT_MATRIX, AT_COIN,
+    AT_ASTEROIDS, AT_GALAGA, AT_DONKEYKONG, AT_QBERT,
     AT_COUNT
 };
 

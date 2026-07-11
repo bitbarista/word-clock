@@ -24,6 +24,12 @@ static const char* const CANNON[4]      = { "...X...", "..XXX..", "XXXXXXX", "XX
 static const char* const BOOM_A[5]      = { "..X..", ".....", "X.X.X", ".....", "..X.." };
 static const char* const BOOM_B[5]      = { "X.X.X", ".X.X.", "X.X.X", ".X.X.", "X.X.X" };
 
+static const char* const SHIP[4]        = { "..X..", ".XXX.", "XXXXX", ".X.X." };
+static const char* const ROCK_BIG[5]    = { ".X.X.", "XXXXX", "X.XXX", "XXXXX", ".X.X." };
+static const char* const ROCK_SMALL[3]  = { ".X.", "XXX", ".X." };
+static const char* const BEE_SPR[4]     = { "..X..", ".XXX.", "XXXXX", "X.X.X" };
+static const char* const DK_SPR[4]      = { "XX.XX", "XXXXX", ".XXX.", "X.X.X" };
+
 static const CRGB MATRIX_HEAD(0xD9, 0xFF, 0xDC);
 static const CRGB MATRIX_G1(0x4B, 0xE1, 0x5F);
 static const CRGB MATRIX_G2(0x2E, 0x94, 0x40);
@@ -32,8 +38,19 @@ static const CRGB PAC_YELLOW(0xFF, 0xD9, 0x3B);
 static const CRGB GHOST_RED(0xFF, 0x4D, 0x4D);
 static const CRGB GHOST_CYAN(0x4D, 0xD9, 0xFF);
 static const CRGB SI_GREEN(0x4B, 0xE1, 0x5F);
+static const CRGB GALAGA_BLUE(0x9F, 0xD8, 0xFF);    // matches HIDDEN[5] GALAGA glow colour
+static const CRGB DK_ORANGE(0xFF, 0x8C, 0x3B);      // matches HIDDEN[6] DONKEY KONG / HIDDEN[8] QBERT glow colour
+static const CRGB ASTEROID_GREY(0xC8, 0xD8, 0xFF);  // matches HIDDEN[7] ASTEROIDS glow colour
 
 static CRGB scaled(const CRGB& c, uint8_t s) { CRGB r = c; r.nscale8_video(s); return r; }
+
+// setCell() writes straight to the LED array with no bounds check, so any
+// animation deriving row/col from a running float (drift, hop paths) must
+// go through this clipped wrapper instead — a raw negative row/col would
+// underflow the uint16_t cell index in setCell().
+static void setRC(int r, int c, const CRGB& col) {
+    if (r >= 0 && r < GRID_N && c >= 0 && c < GRID_N) setCell(r * GRID_N + c, col);
+}
 
 // ================= transitions =================
 void animFade(const CellSet& oldSet, const CellSet& newSet) {
@@ -280,6 +297,100 @@ static void attractCoin() {
     clearFrame(); fillCells(score, GHOST_CYAN); showFrame(1000);
 }
 
+static void attractAsteroids() {
+    int shipC = 2;
+    float rockR = -4, rockC = 8;
+    while (rockR < 8) {                                    // rock drifts down toward the ship
+        rockR += 0.6f;
+        clearFrame();
+        drawSprite(SHIP, 5, 4, 12, shipC, CRGB(0xE8, 0xEC, 0xFF));
+        drawSprite(ROCK_BIG, 5, 5, (int)rockR, (int)rockC, ASTEROID_GREY);
+        showFrame(90);
+    }
+    int hitR = (int)rockR + 2;
+    for (int r = 11; r > hitR; r--) {                       // the shot
+        clearFrame();
+        drawSprite(SHIP, 5, 4, 12, shipC, CRGB(0xE8, 0xEC, 0xFF));
+        drawSprite(ROCK_BIG, 5, 5, (int)rockR, (int)rockC, ASTEROID_GREY);
+        setRC(r, shipC + 2, CRGB::White);
+        showFrame(35);
+    }
+    float lC = rockC, rC = rockC + 2, lR = rockR, rR = rockR;
+    for (uint8_t step = 0; step < 10; step++) {             // rock splits, fragments drift apart
+        lC -= 0.9f; rC += 0.9f; lR += 0.4f; rR += 0.4f;
+        clearFrame();
+        drawSprite(SHIP, 5, 4, 12, shipC, CRGB(0xE8, 0xEC, 0xFF));
+        drawSprite(ROCK_SMALL, 3, 3, (int)lR, (int)lC, ASTEROID_GREY);
+        drawSprite(ROCK_SMALL, 3, 3, (int)rR, (int)rC, ASTEROID_GREY);
+        showFrame(70);
+    }
+}
+
+static void attractGalaga() {
+    struct Slot { float r, c; int8_t targetC; };
+    Slot slots[3] = { { -4, 2, 3 }, { -4, 13, 12 }, { -6, 7, 7 } };
+    for (uint8_t step = 0; step < 20; step++) {             // swoop into formation
+        clearFrame();
+        for (auto& s : slots) {
+            if (s.r < 3) s.r += 0.5f;
+            if (s.c < s.targetC) s.c += 0.6f; else if (s.c > s.targetC) s.c -= 0.6f;
+            drawSprite(BEE_SPR, 5, 4, (int)s.r, (int)s.c, GALAGA_BLUE);
+        }
+        showFrame(110);
+    }
+    float dr = slots[2].r, dc = slots[2].c;
+    for (uint8_t step = 0; step < 14 && dr < GRID_N; step++) {  // one peels off and dives
+        dr += 0.9f;
+        dc += (step & 1) ? 0.6f : -0.6f;
+        clearFrame();
+        drawSprite(BEE_SPR, 5, 4, (int)slots[0].r, (int)slots[0].c, GALAGA_BLUE);
+        drawSprite(BEE_SPR, 5, 4, (int)slots[1].r, (int)slots[1].c, GALAGA_BLUE);
+        drawSprite(BEE_SPR, 5, 4, (int)dr, (int)dc, GALAGA_BLUE);
+        showFrame(70);
+    }
+}
+
+static void attractDonkeyKong() {
+    static const int8_t path[][2] = {                      // zigzag down alternating girders
+        {2,1},{2,3},{2,5},{2,7},{2,9},{2,11},
+        {4,11},{4,9},{4,7},{4,5},{4,3},{4,1},
+        {6,1},{6,3},{6,5},{6,7},{6,9},{6,11},
+        {8,11},{8,9},{8,7},{8,5},{8,3},{8,1},
+        {10,1},{10,3},{10,5},{10,7},{10,9},{10,11},
+        {12,11},{13,11},{14,11},{15,11}
+    };
+    for (auto& p : path) {
+        clearFrame();
+        drawSprite(DK_SPR, 5, 4, 0, 0, CRGB(0xC8, 0x69, 0x3B));
+        setRC(p[0], p[1],     DK_ORANGE);
+        setRC(p[0], p[1] + 1, DK_ORANGE);
+        showFrame(70);
+    }
+}
+
+static void attractQbert() {
+    static const CRGB CUBE_BASE(0x4B, 0x5A, 0xB8);
+    static const CRGB QBERT_COL(0xFF, 0xD9, 0x3B);
+    CRGB level[5][9];
+    for (auto& row : level) for (auto& c : row) c = CUBE_BASE;
+
+    auto draw = [&](int hopL) {
+        clearFrame();
+        for (uint8_t l = 0; l <= 4; l++) {
+            uint8_t w = l * 2 + 1;
+            int startC = 8 - l;
+            for (uint8_t p = 0; p < w; p++) setRC(6 + l, startC + p, level[l][p]);
+        }
+        if (hopL >= 0) setRC(6 + hopL, 8 - hopL, QBERT_COL);
+        showFrame(260);
+    };
+    draw(-1);
+    for (uint8_t l = 0; l <= 4; l++) {                      // hop diagonally, changing each cube
+        level[l][0] = DK_ORANGE;
+        draw(l);
+    }
+}
+
 void animAttract(uint8_t which) {
     if (which == AT_RANDOM || which >= AT_COUNT) which = random(AT_INVADERS, AT_COUNT);
     switch (which) {
@@ -289,6 +400,10 @@ void animAttract(uint8_t which) {
         case AT_CANNONDUEL: attractCannonDuel(); break;
         case AT_MATRIX:   { CellSet now; getNowCells(now); animMatrix(now, true); return; }
         case AT_COIN:       attractCoin();       break;
+        case AT_ASTEROIDS:   attractAsteroids();  break;
+        case AT_GALAGA:      attractGalaga();     break;
+        case AT_DONKEYKONG:  attractDonkeyKong(); break;
+        case AT_QBERT:       attractQbert();      break;
     }
     // settle back into the time
     CellSet now; getNowCells(now);
