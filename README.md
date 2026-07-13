@@ -8,7 +8,9 @@ the filler letters hide arcade words (INSERT COIN, GAME OVER, HIGH
 SCORE, plus a bottom-rows hall of fame: SPACE INVADERS, GALAGA,
 DONKEY KONG, ASTEROIDS, Q*BERT). Enclosure is the "subtle" concept: a plain dark slab in a
 raked desk wedge, so it passes at a work desk; the arcade lives in the
-light, not the shell.
+light, not the shell. Wall mounting is also supported (keyhole
+hangers + bottom cable entry, one `mount_type` switch — see Printed
+parts).
 
 Interactive firmware simulator (live face + animations, mirrors the
 real firmware logic — word grid, transitions, attract mode, hidden
@@ -46,7 +48,7 @@ merged to `main`), not started from scratch.
 | 2× 5.1 kΩ resistors | CC1/CC2 → GND if the socket's CC wires are unterminated |
 | 1000 µF electrolytic (≥6.3 V) | across 5 V/GND at the panel pigtail. **Check the physical size**: standard 1000µF caps run 8–10mm diameter × 11.5mm+ tall (leaded or SMD, height doesn't change with package) — this needs the deepened back cavity (v0.1.6, see Enclosure stack), it did not fit the original 3mm gap |
 | 330 Ω resistor | in the data line to DIN |
-| 3 mm foam sheet, cut into 12× 8×8 mm pads (not a full sheet) | behind the panel, pressed by the shell's pad grid — see Ventilation below for why it's pads, not a sheet |
+| 3 mm foam sheet, cut into 14× 8×8 mm pads (not a full sheet) | behind the panel, pressed by the shell's pad grid — see Ventilation below for why it's pads, not a sheet |
 | 4× M3×**16** self-tapping screws | shell → faceplate corner posts. **Not M3×8** — the screw has to clear 6.4mm of shell material before reaching the post at all; M3×8 leaves just 1.6mm of thread engagement, M3×16 gives ~9.6mm (see Enclosure stack) |
 | Level shifter (optional) | 3.3 V data usually drives WS2812B fine at 5 V; add 74AHCT125 if flaky |
 | Schottky diode, 1N5817 (on hand — 1N5822/1N5819 also fine) | pod 5 V → ESP32 5 V pin, cathode toward the ESP32 — the XIAO likely has no onboard VBUS diode, so without this, don't plug in the pod and a flashing cable at the same time during any future case-open debugging session (routine use never exposes the port — see Power & access). Must be Schottky (low forward drop): ordinary rectifiers (1N4007/5399/5408) work but sag the ESP32's 5 V more under WiFi TX current spikes; fast-recovery types (FR107/FR207) and small-signal diodes (1N4148) are unsuitable here. 1N5817 is only 1 A vs the others' 3 A, but D1 carries just the ESP32's own draw (panel is fed direct, bypassing D1), so that's plenty of margin |
@@ -358,13 +360,46 @@ Every part is a plain single-colour print — no filament swaps.
 | Baffle lattice (drop-in) | `part="lattice"` | flat on bed | dark |
 | Diffuser sheet (drop-in) | `part="diffuser"` | flat on bed, 100 % infill | white or clear — experiment |
 | Rear shell (incl. power socket mount) | `part="shell"` | outer face on bed | dark |
-| Desk stand (**reprint for v0.1.6** — slot resized for the new slab thickness) | `part="stand"` | flat base on bed | dark |
+| Desk stand — pair of feet (current default; `tilt` 12°, a 15° variant is also exported) | `part="stand_feet"` | flat base on bed | dark |
+| Desk stand — full-width low-tail wedge (alternative to the feet) | `part="stand_lowtail"` | flat base on bed | dark |
 | Test coupon | `part="coupon"` | letters on bed | dark |
 | Coupon diffuser strips | `part="coupon_diffuser"` | flat, 100 % infill | one per candidate |
 | Power socket coupon | `part="pod_coupon"` | flange face on bed | any — test print, not visible |
 
-Export: `openscad -o build/<part>.stl -D 'part="<part>"' wordclock.scad`
-(STLs are not committed — regenerate from source.)
+(The solid `stand` wedge and its `stand_sheet` variant that earlier
+sections of this doc discuss were superseded by `stand_feet`/
+`stand_lowtail`; the groove/tilt/vent-relief profile work described
+there carried over into both current stands.)
+
+### Ready-to-print & CAD files (`build/`)
+
+No OpenSCAD needed for a stock build — the exports are committed:
+
+- [`build/desk_set.3mf`](build/desk_set.3mf) — the whole desk build in
+  one file: faceplate, shell, lattice, diffuser, and the stand feet in
+  both 12° and 15° tilt (print one pair), as individually selectable
+  objects. Power socket exits through the back.
+- [`build/wall_set.3mf`](build/wall_set.3mf) — the wall build: same
+  four core parts, but with keyhole hangers baked into the
+  faceplate/shell and the power socket moved to the bottom edge; no
+  stand (it isn't fitted wall-mounted).
+- [`build/*.stl`](build/) — one file per part, desk configuration.
+- [`build/*.step`](build/) — exact BRep CAD exports of every part,
+  plus [`build/wordclock_assembly.step`](build/wordclock_assembly.step)
+  with faceplate/shell/stand feet as named solids in their assembled
+  positions — for measuring or modifying the design in
+  FreeCAD/Fusion/SolidWorks instead of OpenSCAD.
+
+**Customising needs OpenSCAD** (free — open `wordclock.scad` and use
+the Customizer panel): the committed exports cover exactly the two
+stock configurations above, everything else is a parameter change +
+re-export. The headline knobs: `mount_type` (the desk/wall switch —
+sets cable entry + keyholes together), `power_pos` (cable entry point,
+back vs bottom, independently of the bundle), `keyhole` (wall hangers
+on/off), `tilt` (stand angle, 5–25°), `t_diff` (diffuser thickness —
+see the coupon workflow below), plus the grid/font itself. Re-export
+with `./export.sh` (STLs + both 3MF sets) and `./export_step.sh`
+(STEP files; needs FreeCAD — see `step_export/`).
 
 ### The face stack & the diffuser experiment
 
@@ -501,10 +536,24 @@ below), 12° rake in the stand.
 
 Assembly order: faceplate letters-down on the desk → diffuser sheet
 into the opening → lattice on top of it → panel (data pigtail routed
-toward the ESP32's internal locator) → foam pads at the 12 grid points
+toward the ESP32's internal locator) → foam pads at the 14 grid points
 (wires just lie in the open cavity between them, no channel-cutting
 needed) → shell with ESP32, power socket, and wiring attached → four
 M3×16 screws.
+
+**Panel orientation: wire-exit edge toward the bottom** (the same
+edge the power pod and ESP32 sit near). The panel used here has
+three separate connector clusters along one edge (5V/GND/DIN,
+a mid-panel power-injection tap, 5V/GND/DOUT — not a single
+corner pigtail), so orientation actually matters: bottom gives the
+shortest wire runs (60mm to the ESP32, 36mm to the pod, vs. 140mm+
+from the opposite edge) and every connector clears the pad grid by
+17mm or more. Firmware corrects whatever reading rotation this
+produces — `cellToLed()` (`display.cpp`) fully implements
+`mapRotate`/`mapFlip`/`mapSerp` — dial that in empirically at first
+power-on (run a test pattern, see which corner lights first, adjust
+in the web UI) rather than something computable in advance without
+knowing this specific panel's default LED index origin.
 
 ### v0.1.6 — depth-budget audit: this stack didn't actually fit its own contents
 
@@ -639,6 +688,44 @@ to be a local variable in `stand()` *and* a separately hardcoded `40`
 in `assembly()`, silently able to drift out of sync), slot Z-offset
 4→8. Re-verified manifold on `stand()` and the full `assembly()`.
 
+### Alternative stand: sheet-metal construction (`stand_sheet`, since superseded)
+
+Optional, **not a replacement** for `stand()` — a second part, your
+choice which to print. Same lip/horn/groove profile and angle as the
+solid `stand()` (both now share `stand_profile_2d()`, so the sheet
+version is guaranteed to hold the device at the same tilt — this
+reuses the geometry that already took two rounds of fixing to get
+right, rather than re-deriving the trig from scratch a third time),
+but hollowed to a constant `sheet_t` (3mm) wall instead of solid —
+genuine bent-sheet-metal construction, not a solid block that merely
+looks thin. Extruded without end caps, so the open ends show the
+material's cross-section, like a press-braked channel bracket viewed
+end-on.
+
+Real material saving, not just a different look: 49% less volume
+than the solid wedge (179.2cm³ → 91.1cm³) — measured from the actual
+exported meshes (signed-volume calculation over the STL triangles),
+not estimated; an early draft of this note guessed 85% before
+actually computing it.
+
+Both `stand()` and `stand_sheet()` skip OpenSCAD's usual `Simple:`
+manifold indicator in the CLI output — moving the groove cut into the
+2D cross-section (shared by both) means there's no 3D CSG boolean at
+the top level anymore, so OpenSCAD never invokes the CGAL check that
+prints it. Verified watertightness a different way instead: exported
+each STL and confirmed every mesh edge is shared by exactly 2
+triangles (the standard watertight test), independent of what the
+CLI chooses to report.
+
+**Untested trade-off:** an open-ended channel is more prone to
+racking/twisting under load than a solid wedge — 3D-printed PETG/PLA
+has more inherent rigidity than real sheet steel even at this
+thickness, but this hasn't been print-tested under the device's
+actual weight. If it flexes more than expected, corner gussets or
+closed end caps would be the next thing to try, not a reason to
+distrust the base geometry (that part's shared with the
+already-verified `stand()`).
+
 ### The pad grid never got updated for the new cavity depth either
 
 Same root cause as the stand, caught by actually sweeping for it
@@ -667,6 +754,74 @@ unchanged, so the existing pad positions are still correct — only the
 height changed. Re-verified manifold and re-ran all 5 `intersection()`
 checks (vents, posts, lip ring, ESP32 cradle, socket mount) with the
 taller pads — still clear.
+
+### The stand's horn was sitting on top of the bottom vent row
+
+Caught by inspection, not by me — the ventilation section below has
+carried a "chimney effect, since the stand racks the face at a real
+angle" claim since v0.1.1, but the stand's own horn geometry (the tall
+support block the raked slab actually leans on, `Y=[60,84]` in the
+stand's own frame, up to `stand_h`=34mm tall) was never checked against
+where the vent slots land once the device is actually seated in it —
+another instance of the same root cause as the stand/pad-grid misses
+above: a change (or in this case, a design) evaluated in isolation
+instead of against the full assembly.
+
+Confirmed with a real measurement, not a re-eyeballed render (renders
+of this exact junction had already been ambiguous once before, on the
+groove fit): replicated the *identical* transform chain `assembly()`
+applies to `device()` → `shell()` → the vent cut as an OpenSCAD
+`function` (`vent_world_yz()`), placed marker spheres at the real vent
+slot positions using it, exported both the stand and the markers to
+STL, and checked containment with `trimesh`. Result: the bottom vent
+row's exterior opening landed **0.19mm** clear of the horn's solid
+material — inside the slicer's tolerance, i.e. functionally sealed, not
+just tight. The top row was fine (>100mm standoff, nowhere near the
+low stand). Checked whether `vent_y` alone could dodge it first: across
+its entire achievable range the vent row's world position stays within
+or right at the horn's footprint, so this wasn't a one-parameter fix.
+
+Also worth noting for its own sake: the vent slot's full length (not
+just its centre) matters here — after the tilt transform, a slot's
+25mm long axis ends up spanning **21mm of world-Z** (nearly vertical),
+not clustered near one point, so the fix below was sized against both
+slot ends, not just the centre.
+
+**Fix:** a relief notch cut straight into `stand_profile_2d()` (shared
+by both `stand()` and `stand_sheet()`, so both get it automatically),
+sized from the real vent geometry via `vent_world_yz()` rather than
+hand-typed numbers — `vent_relief_y0/y1/z0/z1`, with 3mm margin added
+on top of the measured slot extent. Because the whole stand extrudes
+uniformly along `stand_w`, a single 2D notch in the cross-section opens
+the full width automatically, reaching open air at both side edges of
+the stand rather than needing 18 individual per-slot tunnels. The horn
+keeps its full `Y=[60,68]` and `Y=[80,84]` depth solid on either side of
+the notch, plus its full base below the notch — thinned locally where
+the vents actually are, not hollowed out generally.
+
+Re-verified with the same marker+`trimesh` method, this time sampling
+both ends *and* the centre of every slot (108 points total, both rows):
+worst-case clearance is now **3.0mm**, zero points inside solid
+material. Stand volume dropped from 179.2cm³ to 164.2cm³ (~8% less,
+consistent with a local notch, not a structural hollowing-out).
+
+Also fixed in passing: `assembly()`'s device Z-offset (8.6) was still a
+second hardcoded copy of the same number `stand_profile_2d()`'s own
+groove fix depends on — flagged in that fix's own comment as a
+future drift risk, and it was still separately typed in two places.
+Hoisted to `device_z_off`, used by both.
+
+**Untested trade-off:** the notch removes horn material at exactly the
+point that takes the leaning slab's load. The remaining cross-section
+looked reasonable in the render (base + both flanking Y-bands still
+full height), but this is a CAD/geometry check, not a load test —
+soak/flex-check the printed horn before trusting it holds the device's
+weight unattended long-term, same caveat already standing for the
+ventilation sizing itself below.
+
+**Reprint required:** the stand only (today `stand_feet` or
+`stand_lowtail`, which inherited this relief) — the device side of the
+stack (faceplate/shell/lattice/diffuser/panel) is unaffected.
 
 ### Ventilation (v0.1.1 — runs 24/7, so this isn't optional)
 
@@ -705,6 +860,29 @@ Fixed two ways, both in `shell()`:
   cradle to an internal position above the pod (see Power & access)
   freed it up, so this is simpler than it used to be, not more
   complex.
+
+  **Edge-midpoint pads:** corners had dedicated support, but the
+  left/right edge *midpoints* didn't — nearest pad was the inner
+  grid's (±40, 0), 40mm from the true edge at ±80. Added (±`corner_pad_off`,
+  0), reusing the same already-verified-clear X offset as the corner
+  pads, cutting that to 10mm. 14 pads total now. Verified against a
+  real physical concern, not just theory: checked the wire-exit
+  positions from actual photos of the panel (three connector clusters
+  along one edge) against the full pad grid, including these two —
+  nearest pad-to-wire clearance is 17mm even along the tightest
+  straight-line routing path, so the added pads don't crowd the
+  wiring either. Manifold and all 5 `intersection()` checks (vents,
+  posts, lip ring, ESP32 cradle, pod mount) re-verified with the
+  larger grid — clear.
+
+  Every pad in the grid — inner, corner, and these two — lands on an
+  exact lattice wall intersection (walls at every 10mm: −80, −70, ...
+  0, ... 70, 80; LEDs sit at the odd half-pitch positions in between,
+  −75, −65, etc.), confirmed by checking pad coordinates against the
+  actual wall positions computed from `lattice()`, not assumed from
+  the round numbers looking plausible. Every pad presses on a rigid
+  wall-to-wall crossing, never on open cell area or directly behind
+  an LED.
 - **Vent slots through the lid.** Two rows of 18 slots each, 3×25mm
   (`vent_slot_w/l/n`, `vent_span`, `vent_y`), positioned to clear the
   pad grid, the ESP32 cradle, the pod cutout, and the corner posts —
@@ -746,11 +924,51 @@ still running warm.
 **Reprint required:** `shell()` only — the stencil, diffuser, lattice,
 and panel side of the stack are unchanged.
 
-## Firmware (next phase)
+## Firmware
 
-ESP32-S3, NTP + web UI (animation pick/interval, colours, brightness
-schedule, timezone), transition animations (Pac-Man eat, Matrix rain,
-Tetris drop, invader zap), wandering-Pac ambient mode, attract mode,
-hidden-word easter eggs. MQTT/Home Assistant notification words are a
-possible v2. The artifact linked above is the behavioural spec — the
-grid, word logic and animations there are what the firmware should do.
+Exists on the `firmware` branch (fw v0.3.0 — not yet merged to
+`main`, where this README lives). ESP32-S3, NTP + web UI (animation
+pick/interval, colours, brightness schedule, timezone), transition
+animations (Pac-Man eat, Matrix rain, Tetris drop, invader zap),
+wandering-Pac ambient mode, attract mode, hidden-word easter eggs
+(the full 9-word list is in The letter grid, above; each fires on its
+own `wordsMin`/`attractMin` timer, default 10/30 minutes, adjustable
+in the web UI). MQTT/Home Assistant notification words are a possible
+v2. The artifact linked above is the behavioural
+spec — the grid, word logic and animations there are what the
+firmware should do.
+
+### Running without internet (e.g. a work desk that can't join company WiFi)
+
+No live internet connection is required for the clock to function.
+WiFi is attempted once at boot (15s timeout, using whichever
+credentials were last saved via the web UI); if that fails, it falls
+back to hosting its **own access point** (`TIME-INVADERS`, password
+`insertcoin`) and keeps running regardless, displaying whatever time
+it currently has — it doesn't block on or require a connection to
+work.
+
+**Manual time sync needs no internet on either end.** The web UI has
+a **"⏆ Sync time from this device"** button that POSTs the connected
+phone/laptop's own clock straight to the word clock (`/api/time`).
+Connect your phone or laptop to the clock's own `TIME-INVADERS`
+hotspot, open its web UI, tap the button — no company WiFi, no
+personal hotspot's internet, no NTP involved at all, just a direct
+local connection to the clock itself. This is the practical option
+when company WiFi isn't permitted and a personal hotspot won't be on
+permanently: a quick visit to the clock's own hotspot, whatever
+interval suits you, substitutes for NTP.
+
+**Between syncs, accuracy depends on the ESP32-S3's own crystal** —
+there's no battery-backed RTC chip in the BOM (e.g. a DS3231), so
+timekeeping between syncs will drift at whatever rate the onboard
+crystal happens to (typically low single digits of seconds/day, not
+a guaranteed spec, and heat from nearby LEDs won't help). For a clock
+that displays the exact minute, that's a real, visible effect over
+days-to-weeks without a resync, not just theoretical.
+
+**Power loss is handled as continuity, not correction.** The current
+time is checkpointed to flash every 5 minutes, so a power cycle
+without WiFi resumes from roughly where it left off rather than
+resetting to zero — but whatever drift had already accumulated
+carries through unchanged.
