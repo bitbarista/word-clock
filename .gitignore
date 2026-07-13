@@ -1,5 +1,9 @@
 # slicer project files (not print-ready output, just working state)
 *.3mf
+# ...except the print-ready 3MF sets meant for end users to print
+# directly, no OpenSCAD required (see export.sh, pack_3mf.py)
+!build/desk_set.3mf
+!build/wall_set.3mf
 
 # PlatformIO build cache — present on this branch's working tree even
 # though the firmware source (and its own matching .gitignore) lives

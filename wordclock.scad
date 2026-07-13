@@ -16,7 +16,28 @@ echo(str("word clock model v", VERSION));
 include <font.scad>
 
 /* [Part] */
-part = "assembly"; // [assembly, faceplate, lattice, diffuser, shell, stand, coupon, coupon_diffuser, pod_coupon, face2d]
+part = "assembly"; // [assembly, faceplate, lattice, diffuser, shell, stand_lowtail, stand_feet, coupon, coupon_diffuser, pod_coupon, face2d]
+// assembly()'s real colours (see device()/assembly() near the bottom of
+// this file) are a deliberately dark charcoal/near-black colourway,
+// matching the actual enclosure — but that leaves almost no contrast
+// in OpenSCAD's own preview, making edges and part boundaries hard to
+// read while editing. Flip this off for a high-contrast preview
+// palette instead. Print colour is actually arbitrary (whatever
+// filament you choose) — true_colors=true (default) just previews a
+// dark colourway as one example, not a manufacturing constraint.
+true_colors = true; // [true, false]
+
+/* [Mounting] */
+// Single switch for the two mounting styles — sets power_pos and
+// keyhole together (see [Electronics] below) and drops the desk stand
+// from the assembly() preview for "wall", so there's one place to look
+// instead of hunting for the individual params. Still just a derived
+// default: power_pos/keyhole are ordinary variables underneath, so
+// advanced/mixed setups (e.g. bottom connector on a desk build) are
+// still possible by editing them directly further down — this toggle
+// just isn't exposed as a separate Customizer control for that case,
+// since it's not the common path.
+mount_type = "desk"; // [desk, wall]
 
 /* [LED panel] */
 // LED-to-LED spacing of the matrix panel
@@ -169,6 +190,19 @@ esp_stop_t = 1.8;   // end-stop wall thickness
 // wing flex range; worth checking on the actual socket before
 // trusting it blind.
 pwr_pod = true;
+// back: mounted through the shell's flat lid, port faces straight out
+// the back (original design, works fine desk-mounted). bottom: mounted
+// through the tray's own bottom wall instead, port faces down — the
+// back mount is unusable wall-mounted (the port would be sandwiched
+// against the wall), so this is the wall-mount config. The two are
+// mutually exclusive (one physical socket, one orientation at a time),
+// not a combinable pair with the desk stand — when wall-mounted the
+// stand isn't fitted at all, so there's no cable-clearance conflict to
+// design around.
+// Driven by mount_type above (not its own Customizer control) — edit
+// this line directly if you want a mixed setup (e.g. bottom connector
+// on a desk build); valid values are "back" and "bottom".
+power_pos = mount_type == "wall" ? "bottom" : "back";
 // snap-in cutout in the shell
 pwr_snap_w = 14.7;
 pwr_snap_h = 5.4;
@@ -178,8 +212,43 @@ pwr_snap_r = 1.3;
 // just relocated, not re-derived)
 pwr_cavity = [18, 10, 8];
 // pod centre height above the bottom face edge (keep pod + plug
-// clear of the 34 mm stand horn)
+// clear of the 34 mm stand horn) — power_pos="back" only
 pod_up = 48;
+// power_pos="bottom" only: Z-height (device frame) of the connector's
+// centreline — see pod_bottom_z below (defined next to wall_top,
+// which it depends on; OpenSCAD evaluates top-level expressions in
+// file order, same reason flat_foot_t had to move earlier in this
+// file).
+
+// Wall-mount keyhole slot, cut into the shell's lid with a local
+// reinforcement boss added on the inside face — lid_t=2.4mm alone is
+// too thin to safely bear the whole assembled weight hanging off a
+// single screw. No real screw/anchor spec was given for this, so
+// these dimensions are a reasonable assumption (sized for a common
+// picture-hanging screw, ~7-8mm panhead), not a verified fit — check
+// against the actual screw before trusting it blind, same caveat as
+// pwr_pod's own flange dimensions above.
+// Driven by mount_type above (not its own Customizer control) — edit
+// this line directly for a mixed setup (e.g. a keyhole on a desk
+// build for extra security on a shelf).
+keyhole = mount_type == "wall";
+// shell-local Y of the entry circle's centre — between the (0,0) and
+// (0,-pad_off) pressure pads (see [Ventilation] below), clear of both
+// with margin (verified by rendering + checking against the real pad
+// geometry, not just this comment's own arithmetic).
+keyhole_y = -18;
+keyhole_entry_d = 9;      // screw head clearance (entry circle)
+keyhole_slot_w = 4.5;     // screw shank clearance (the narrow part
+                           // the shank rests in once hung)
+keyhole_slot_len = 10;    // drop distance from the entry circle's own
+                           // centre to the slot's closed (top) end
+keyhole_boss_margin = 4;  // extra material radially around the cut,
+                           // grown from the keyhole's own outline
+                           // (not a separate circle) so the boss
+                           // follows the slot shape closely
+keyhole_boss_t = 3;       // extra thickness the boss adds beyond
+                           // lid_t, on the inside face only — outside
+                           // profile is unaffected
 
 /* [Ventilation] */
 // rear pressure-pad grid (replaces the old full-length ribs) —
@@ -212,6 +281,11 @@ pad_h = 10.5;
 // moved off the tray-wall corner (see shell()); it used to block one
 // of these and need a smaller special-cased pad instead.
 corner_pad_off = 70;
+// centre-row edge pads (±corner_pad_off, 0): the corners get
+// dedicated support, but the left/right edge MIDPOINTS didn't —
+// nearest pad was the inner grid's (±40,0), 40mm from the true edge
+// at ±80. Reuses corner_pad_off (already a verified-clear X
+// position) rather than a new offset, cutting that to 10mm.
 // two rows of slots cut through the lid for passive convection
 // (device sits raked in its stand, so top/bottom is a real chimney
 // axis). Span/offset chosen to clear the pad grid (|x,y| <= pad_off)
@@ -238,7 +312,13 @@ vent_span = 120;
 vent_y = 68;
 
 /* [Stand] */
-// backwards rake of the face
+// backwards rake of the face. Default 12° suits viewing from a bit of
+// distance/near eye-level; 15° is a supported alternative for a clock
+// sitting close to the viewer and glanced down at (e.g. right next to
+// a keyboard) — both angles have been fully verified for stand_feet()
+// (opening width, device interference, edge contact, vent clearance).
+// Values outside {12, 15} fall back to whatever the geometry naturally
+// does — re-run the verification suite before trusting a new value.
 tilt = 12; // [5:25]
 stand_w = 120;
 // stand_depth/stand_h and the wedge polygon in stand() were sized
@@ -264,6 +344,12 @@ stand_h = 34;
 groove_y = 54;
 // slot clearance around the slab
 groove_clr = 0.8;
+// device's Z-offset in assembly() — was hardcoded separately there
+// (and had already drifted once, 4.6 -> 8.6, when the groove-pinch-
+// point fix above needed it to move; see that comment). Hoisted here
+// so assembly() and the vent-relief calc below share one number
+// instead of two that can silently disagree.
+device_z_off = 8.6;
 
 /* [Hidden] */
 $fa = 4; $fs = 0.4;
@@ -320,6 +406,16 @@ slab_t   = wall_top + lid_t;                  // total device thickness
 post_off = face_w/2 - 8.5;                    // corner post centres
 lip_out  = face_w/2 - wall_t - 0.4;           // shell lip outer half-width
 groove_w = slab_t + groove_clr;
+// power_pos="bottom": Z-height (device frame) of the connector's
+// centreline, through the tray's own bottom wall instead of the
+// shell's lid. Centred in the same back_t cavity the back-mounted
+// version already proves is clear of the lattice/panel stack — that
+// cavity spans device Z=[t_front+baffle_d+panel_t, wall_top] =
+// [15.2, 28.6], so the centre is 21.9. Not yet checked against the
+// shell's own pads/ESP32 cradle at the corresponding device position
+// (those are positioned in shell()'s own flipped frame) — verify
+// before trusting this blind, same as everything else in this file.
+pod_bottom_z = (t_front + baffle_d + panel_t + wall_top) / 2;
 
 // ----------------------------------------------------------------
 // helpers
@@ -411,8 +507,24 @@ module face_core(n, grid, fw, tray = true) {
         // already-printed faceplate from before this change still
         // has the old notch — it's just a harmless unused opening,
         // no need to reprint on its account alone.
-        translate([0, 0, t_front]) linear_extrude(wall_top - t_front)
-            difference() { rsq(fw); rsq(fw - 2*wall_t, corner_r - 1); }
+        //
+        // power_pos="bottom": this wall (not anything in shell()) IS
+        // the true exterior surface at the edges, so the connector's
+        // passage has to cut through it here, not through shell()'s
+        // own (inset) lip. Device bottom = faceplate's own -Y (see
+        // shell()'s own vent-cutting comment for the sign derivation —
+        // shell()'s local +y is device bottom, and shell() gets
+        // rotate([180,0,0]) in device(), so device_y=-shell_y and
+        // device bottom is therefore -Y here, where shell()'s rotation
+        // doesn't apply).
+        difference() {
+            translate([0, 0, t_front]) linear_extrude(wall_top - t_front)
+                difference() { rsq(fw); rsq(fw - 2*wall_t, corner_r - 1); }
+            if (pwr_pod && power_pos == "bottom")
+                translate([0, -fw/2, pod_bottom_z])
+                    rotate([-90, 0, 0])
+                        pwr_connector_cut(wall_t);
+        }
         // corner screw posts. Pilot hole is a fixed 10mm deep
         // regardless of post height (post is now wall_top-t_front =
         // 27.4mm tall, up from 17.4mm, since wall_top grew with
@@ -573,6 +685,36 @@ module pod_coupon() {
     }
 }
 
+// Local frame shared by both power_pos mounting orientations: the
+// mounting face is local z=0 (port facing local -Z), flange cut
+// through `through_t` of material, cavity for body + wing deployment
+// extending pwr_cavity[2] further into local +Z. Callers position/
+// rotate this for whichever real wall it's cutting through — back
+// mode uses it as-is (mounting face already faces -Z, matching the
+// shell's own lid), bottom mode wraps it in rotate([-90,0,0]) (maps
+// local -Z -> world -Y, i.e. port facing out the bottom edge; local Y
+// -> world -Z, i.e. the flange's own height dimension becomes the
+// device-Z placement, centred via the caller's own translate).
+module pwr_connector_cut(through_t) {
+    translate([0, 0, -eps]) linear_extrude(through_t + 2*eps)
+        offset(pwr_snap_r) offset(-pwr_snap_r)
+            square([pwr_snap_w, pwr_snap_h], center = true);
+    translate([0, 0, through_t - eps]) linear_extrude(pwr_cavity[2] + eps)
+        square([pwr_cavity[0], pwr_cavity[1]], center = true);
+}
+
+// Entry circle (bottom, where the screw head goes in) union'd with a
+// slot (top, where the shank ends up once the item is hung and slides
+// down under gravity — shell's own local -y is device top, per the
+// vent-cutting comment below, so the slot's own closed end sits at
+// MORE-negative y than the entry circle, i.e. further toward device
+// top). Local origin is the entry circle's own centre.
+module keyhole_2d() {
+    circle(d = keyhole_entry_d);
+    translate([0, -keyhole_slot_len/2])
+        square([keyhole_slot_w, keyhole_slot_len], center = true);
+}
+
 // ----------------------------------------------------------------
 // rear shell: flat lid, inner lip, foam-pressure ribs,
 // ESP32 (XIAO) pocket, cable exit
@@ -581,6 +723,14 @@ module shell() {
     difference() {
         union() {
             linear_extrude(lid_t) rsq(face_w);
+            // Wall-mount keyhole reinforcement boss — added on the
+            // inside face only (outside profile at Z=0 is untouched),
+            // grown from the keyhole's own outline (not a separate
+            // circle) so the extra material follows the slot shape
+            // closely rather than a loosely-fitting blob.
+            if (keyhole)
+                translate([0, keyhole_y, lid_t]) linear_extrude(keyhole_boss_t)
+                    offset(keyhole_boss_margin) keyhole_2d();
             // lip that registers inside the tray wall — routed around
             // the faceplate's corner posts (rather than punched
             // through them) so the ring stays one continuous band
@@ -609,6 +759,10 @@ module shell() {
                 for (x = [-corner_pad_off, corner_pad_off], y = [-corner_pad_off, corner_pad_off])
                     translate([x, y, 0])
                         linear_extrude(pad_h) square(pad_w, center = true);
+                // centre-row edge pads — see corner_pad_off comment above
+                for (x = [-corner_pad_off, corner_pad_off])
+                    translate([x, 0, 0])
+                        linear_extrude(pad_h) square(pad_w, center = true);
             }
             // ESP32 board locator — internal, above the pod, long axis
             // along X. Universal footprint (brd_w/brd_l) fits either a
@@ -635,19 +789,55 @@ module shell() {
                 cylinder(d = 3.4, h = lid_t + lip_h + 1);
                 cylinder(d = 6.5, h = 1.4);
             }
-        if (pwr_pod) {
+        if (pwr_pod && power_pos == "back") {
             // power socket mounts directly into the shell now (see
             // pwr_pod comment above) — snap-fit flange cutout through
             // the lid, cavity behind it for body + wing deployment.
-            // No separate part, no screws.
-            translate([0, face_w/2 - pod_up, 0]) {
-                translate([0, 0, -eps]) linear_extrude(lid_t + 2*eps)
-                    offset(pwr_snap_r) offset(-pwr_snap_r)
-                        square([pwr_snap_w, pwr_snap_h], center = true);
-                translate([0, 0, lid_t - eps]) linear_extrude(pwr_cavity[2] + eps)
-                    square([pwr_cavity[0], pwr_cavity[1]], center = true);
-            }
+            // No separate part, no screws. power_pos="bottom" cuts the
+            // equivalent through faceplate()'s tray wall instead — see
+            // pwr_connector_cut()'s own comment for why this can't
+            // just be repositioned here (the true exterior surface at
+            // an edge is the tray wall, not anything in shell() —
+            // shell()'s own lip sits inset wall_t+0.4 from it).
+            translate([0, face_w/2 - pod_up, 0])
+                pwr_connector_cut(lid_t);
         }
+        if (pwr_pod && power_pos == "bottom") {
+            // The connector itself is cut through faceplate()'s tray
+            // wall (see face_core()'s "if (tray)" block), but shell()
+            // still has its own lip ring running around all four
+            // edges to register inside that same wall — and this
+            // corner of it lands exactly where the connector now
+            // sits. Confirmed as a REAL interference, not a guess: a
+            // probe volume matching the connector's exact device-frame
+            // footprint, boolean-intersected against shell() placed
+            // via its own real device() transform, found 74.5mm^3 of
+            // overlap right in the lip band (Y=[-89.2,-87.4],
+            // Z=[24.6,26.9] — precisely the lip's own inner/outer
+            // radius and lid_t..lid_t+lip_h thickness).
+            //
+            // This cut's own placement is shell()'s local-frame
+            // equivalent of the exact same device-frame cut used in
+            // face_core() (translate([0,-face_w/2-1,pod_bottom_z])
+            // rotate([-90,0,0])) — derived algebraically from shell()'s
+            // own device()-placement transform (translate([0,0,slab_t])
+            // rotate([180,0,0])), not eyeballed: for shell_local(x,y,z)
+            // to land at that same device point after shell()'s own
+            // transform, shell_local = rotate(90,[1,0,0]) then
+            // translate([0, face_w/2+1, slab_t-pod_bottom_z]) — the
+            // sign-flipped rotation (+90 here vs -90 in face_core())
+            // is exactly what accounts for shell()'s own 180 flip.
+            // Re-verified after implementing: the same probe-volume
+            // intersection test now returns empty.
+            translate([0, face_w/2 + 1, slab_t - pod_bottom_z])
+                rotate([90, 0, 0])
+                    translate([0, 0, -1])
+                        linear_extrude(wall_t + pwr_cavity[2] + 2)
+                            square([pwr_cavity[0], pwr_cavity[1]], center = true);
+        }
+        if (keyhole)
+            translate([0, keyhole_y, -eps]) linear_extrude(lid_t + keyhole_boss_t + 2*eps)
+                keyhole_2d();
         // ventilation: two rows of slots through the lid (see
         // [Ventilation] params for the clearance reasoning). Model
         // -y is device TOP (the lid flips onto the tray, so shell y
@@ -664,52 +854,446 @@ module shell() {
 }
 
 // ----------------------------------------------------------------
-// desk stand: raked slot in a wedge block
+// desk stand history: the original design was a solid raked wedge
+// with the groove cut straight through it (stand()/stand_profile_2d()
+// — removed once stand_feet() below fully replaced it: a permanent-
+// mounting screw hole through a ~35mm-deep solid wedge needed either a
+// boss protruding past the wedge's own silhouette, or an impractically
+// long screw, and stand_feet()'s thin-wall construction solved that
+// directly). A hollow "sheet steel" variant of the same wedge
+// (stand_sheet()) went with it, for the same reason.
+//
+// stand_lowtail() below survives as a genuine alternative — a proper
+// boolean sweep of the groove cut against the old wedge (not corner-
+// point guesses, which had led to a wrong "keeps its full height on
+// both sides" claim earlier) showed the groove ALONE thinned the
+// wedge's rear horn to 5-19mm across most of Y=[45,75], with the only
+// genuinely full-height (stand_h=34mm) material a narrow Y=[76,84]
+// peak — stand_lowtail() trades that peak away deliberately (rear
+// ceiling drops to ~11mm instead of continuing at stand_h), on the
+// theory that it's the groove's own far-end backstop and not much
+// else. Untested against an actual load.
 // ----------------------------------------------------------------
-module stand() {
+
+// Rear ceiling drops to ~11mm (matching the front lip's own height)
+// right where the groove is already doing most of the cutting,
+// instead of continuing at stand_h up to Y=84 and then notching a
+// hole in it. The transition point matters: putting it at Y=79 (right
+// after the vent row) left ONE specific point 0.19mm from solid —
+// not a bug in this shape, the groove's OWN boundary is naturally
+// marginal there. Y=70 clears it properly (4.0mm, verified the same
+// way as elsewhere in this file — markers at the real vent positions,
+// both ends + centre of all 18 slots, checked against the exported
+// mesh with trimesh).
+module stand_profile_2d_lowtail() {
+    tail_z = 11;
     difference() {
-        // low lip in front (must not cover the bottom letter row:
-        // lip 13 high ⇒ ~9 mm of slab hidden < 12 mm bezel — this
-        // relationship is about lip height/tilt, not stand_depth, so
-        // it's unaffected by the depth-budget fix), tall support horn
-        // behind where the slab leans on it — horn pushed back
-        // (42/66 -> 60/84) and stand_depth grown (92 -> 104) to give
-        // the wider groove room without eating into the lip.
-        //
-        // First attempt at this fix (groove_y alone, z-offset left at
-        // 4) technically avoided the lip but left only 0.7mm of floor
-        // material at the groove's lowest pinch point (~Y=70) —
-        // found by plotting the actual wedge-minus-slot cross-section
-        // (point-sampled, not just corner coordinates), not by
-        // rendering and eyeballing it, which had already produced one
-        // wrong "looks fine" read on this same shape. z-offset raised
-        // 4 -> 8, giving 4.69mm at that pinch point instead — checked
-        // the same way. Matching offset in assembly()'s device
-        // positioning (4.6 -> 8.6) needs to move with this if it
-        // changes again.
-        rotate([90, 0, 90]) linear_extrude(stand_w, center = true)
-            polygon([
-                [0, 0], [stand_depth, 0],
-                [stand_depth, 8], [84, stand_h],
-                [60, stand_h], [32, 13], [24, 13], [0, 5]
-            ]);
-        translate([0, groove_y, 8]) rotate([-tilt, 0, 0])
-            translate([-stand_w/2 - 5, -groove_w/2, 0])
-                cube([stand_w + 10, groove_w, 60]);
+        polygon([
+            [0, 0], [stand_depth, 0],
+            [stand_depth, tail_z - 4], [70, tail_z],
+            [60, stand_h], [32, 13], [24, 13], [0, 5]
+        ]);
+        translate([groove_y, 8]) rotate(-tilt)
+            translate([-groove_w/2, 0])
+                square([groove_w, 60]);
+    }
+}
+
+module stand_lowtail() {
+    rotate([90, 0, 90]) linear_extrude(stand_w, center = true)
+        stand_profile_2d_lowtail();
+}
+
+// stand_feet(): two short feet instead of one continuous stand_w=120
+// base. The vent row spans X=[-60,60]; the device itself extends to
+// X=+-92 (face_w/2). That leaves 32mm of clear width on each side
+// with no vents at all, so feet placed there need no relief of any
+// kind. Centred at X=+-76 (16mm clear of both the vent span and the
+// device edge). Untested trade-off: the device is now gripped by two
+// 24mm-wide segments 152mm apart instead of one continuous 120mm
+// groove — a normal way to hold a rigid flat panel (most
+// picture-frame easels work this way), but a real change in HOW it's
+// held, not just a material change.
+foot_w = 24;
+foot_x = 76;
+
+// First pass reused the same solid wedge stand() itself uses (just
+// narrower, extruded only across foot_w) — rejected once a permanent-
+// mounting screw hole was wanted through it: every valid version
+// either needed a boss visibly protruding past the wedge's own
+// silhouette, or a very long screw to reach the wedge's own distant
+// natural boundary (~35mm through the foot alone).
+//
+// Second pass replaced the wedge with a closed U-channel (front wall +
+// back wall + a separate connecting base wall, all as one tilted
+// shape) plus two separate ramp-shaped feet aimed at its corners —
+// also rejected, for being more complicated than it needed to be: a
+// closed channel base and two hand-aimed ramps, when the actual job
+// is just "hold the device up at the right angle."
+//
+// This is that simplification: one flat foot pad (a plain untilted
+// rectangle, Y=0..stand_depth) with the two angled uprights rising
+// straight out of its top surface — no separate closed base, no ramps
+// chasing the tilted wall's own path (that chase is what went wrong
+// in the second pass: hand-aimed polygons that didn't actually follow
+// the walls and left gaps). The uprights extend `wall_embed` past
+// their own useful length, straight down into the foot's own
+// material, so the union overlaps by construction instead of by
+// aiming at a calculated point. 36.7cm³/pair vs 71.7cm³ for the
+// original solid-wedge version (49% less).
+// ----------------------------------------------------------------
+// REBUILT from scratch after a serious bug: the previous version of
+// this stand built the front stop and back wall as two INDEPENDENT
+// polygons, each hand-aimed at where the device's edge should be. A
+// fix for one specific local symptom ("front stop barely touches the
+// device") shifted ONLY the front stop's own inner face 0.94mm toward
+// the back wall (`front_stop_engage`), without touching the back
+// wall — which silently shrank the total clear opening between the
+// two walls from groove_w=31.8mm down to 31.8-0.94=30.86mm. That's
+// narrower than the device itself (slab_t=31mm) — the device
+// physically could not fit in the slot. Caught only when the user
+// measured the actual opening directly (30.861mm) and compared it to
+// the shell thickness (31mm) — every check run on this design before
+// that (manifold, watertight, vent/hole clearance, device-edge
+// contact sampling, even visual renders) tested contact and
+// coverage, never the raw clear width of the opening itself, so nine
+// rounds of "verified" fixes never caught the one number that
+// actually determines whether the device fits.
+//
+// The fix is a change of INVARIANT, not another local patch: the
+// front wall's device-facing face and the back wall's device-facing
+// face are now ALWAYS defined as u = -groove_w/2 + shift and
+// u = +groove_w/2 + shift respectively, for exactly one shared
+// `groove_center_shift`. Because u is the coordinate perpendicular to
+// the tilt direction (a rigid rotation of the plain Y,Z frame), the
+// perpendicular distance between those two faces is exactly
+// |(+groove_w/2+shift) - (-groove_w/2+shift)| = groove_w, for ANY
+// value of shift — the two walls can be recentred together to fix a
+// contact-asymmetry complaint, but they can never again drift apart
+// independently, because there is only one shift, applied to both.
+// This mirrors the original stand()'s own proven approach
+// (stand_profile_2d() cuts a single groove_w-wide slot through one
+// solid wedge, so both faces come from the same cut) — a boolean cut
+// was tried here too, but a single rectangular cut tool wide enough
+// to reach the front stop's low-Z region also swept through and
+// severed the flat foot's connecting base in the middle (verified by
+// checking the 2D profile's contour count, which jumped from 1 to 2
+// the moment the cut's reach extended that far). Explicit polygons
+// sharing the same u-based invariant give the same guarantee without
+// that side effect.
+channel_wall_t = 3;      // wall thickness beyond the device-facing face
+channel_len = 30;        // back wall height — this one does the actual gripping
+front_stop_height = 10;  // grounded in the original stand()'s own "lip 13 high"
+flat_foot_t = 3;          // flat foot pad thickness — see the mounting-hole
+                          // clearance comment below for why this shrank from 6
+embed_target_z = 0.75;   // back wall's buried bottom edge height — inside the
+                          // foot (flat_foot_t=3), clear of the true floor (Z=0)
+
+// groove_center_shift recentres BOTH walls together to close the
+// small contact asymmetry a real marker check found (0.74mm front gap
+// vs 0.06mm back gap — assembly()'s device-centring offset doesn't
+// split groove_clr symmetrically). (0.74-0.06)/2 = 0.34mm toward the
+// back. Unlike the old front_stop_engage, this shift is applied to
+// BOTH walls' u-values identically, so the opening between them stays
+// exactly groove_w regardless of its value — it can only recentre the
+// device within the slot, never narrow the slot itself.
+groove_center_shift = 0.34;
+
+function wall_v_bottom(u) = (embed_target_z - (device_z_off - u*sin(tilt))) / cos(tilt);
+function upright_pt(u, v) =
+    [groove_y + u*cos(tilt) + v*sin(tilt),
+     device_z_off - u*sin(tilt) + v*cos(tilt)];
+function v_at_z(u, z) = (z - (device_z_off - u*sin(tilt))) / cos(tilt);
+
+// FRONT STOP: u_front_trail (device-facing) is exactly -groove_w/2
+// from the shared centreline, plus the one shared shift — never
+// adjusted independently of the back wall again.
+u_front_trail = -groove_w/2 + groove_center_shift;
+u_front_lead  = u_front_trail - channel_wall_t;
+function front_stop_corners() =
+    [
+        upright_pt(u_front_lead,  v_at_z(u_front_lead, 0)),
+        upright_pt(u_front_lead,  v_at_z(u_front_lead, front_stop_height)),
+        upright_pt(u_front_trail, v_at_z(u_front_trail, front_stop_height)),
+        upright_pt(u_front_trail, v_at_z(u_front_trail, 0))
+    ];
+module stand_front_stop_2d() polygon(front_stop_corners());
+
+// BACK WALL: u_back_trail (device-facing) is exactly +groove_w/2 from
+// the SAME shared centreline, plus the SAME shared shift — so the
+// perpendicular gap between u_front_trail and u_back_trail is
+// groove_w=31.8mm always, by construction, not by two numbers
+// happening to agree.
+u_back_trail = groove_w/2 + groove_center_shift;
+u_back_lead  = u_back_trail + channel_wall_t;
+function back_upright_corners() =
+    let(vb_trail = wall_v_bottom(u_back_trail), vb_lead = wall_v_bottom(u_back_lead))
+    [
+        upright_pt(u_back_trail, vb_trail),
+        upright_pt(u_back_trail, channel_len),
+        upright_pt(u_back_lead, channel_len),
+        upright_pt(u_back_lead, vb_lead)
+    ];
+module stand_back_upright_2d() polygon(back_upright_corners());
+
+// FILL: hugs the device's underside between the two walls.
+//
+// First attempt shared front_stop_corners()[2] (its own trailing-TOP
+// corner, at front_stop_height=10) as the fill's front anchor, to
+// guarantee a zero-gap seam by construction. It did close the seam,
+// but it also raised the fill's whole surface up to Z=10 there —
+// ABOVE the device's real edge height (Z~8.6) — which pokes solid
+// material into space the device itself needs to occupy. Caught by a
+// proper interference test: a solid proxy box matching the device's
+// real slab_t/face_w/tilt, positioned via assembly()'s own transform,
+// boolean-intersected against the exported stand mesh. That test is
+// what should have been run on every version of this stand from the
+// start — every earlier check (manifold, watertight, vent/hole
+// clearance, edge-CONTACT point sampling) confirms the device touches
+// the stand somewhere, none of them confirm the stand doesn't also
+// block the device from getting there in the first place.
+//
+// Second attempt kept the fill's own top boundary at the device's real
+// edge line, but patched the seam against front_stop with a separate
+// GUSSET triangle computed via a linear fraction along front_stop's
+// own trailing edge. That fraction (t_b) assumed the device's front
+// edge Y always falls BETWEEN the trailing edge's two endpoints — but
+// after this stand's u_front_trail was recentred by
+// groove_center_shift, the device's real edge Y (38.5) landed 0.11mm
+// PAST the trailing edge's own top corner (38.39), so the fraction
+// came out to 1.051 — just past the valid [0,1] range — and the
+// gusset extrapolated a spike 0.52mm above front_stop_height. Visible
+// in a real render as a sliver poking above the stop, and as the stop
+// itself falling 0.11mm short of the device's actual edge (its own
+// corner simply didn't reach that far). Caught from a screenshot, not
+// from any of the numeric checks — none of them sample "does any
+// fraction-based construction go outside [0,1]".
+//
+// Fixed by dropping fraction-based gussets entirely in favour of
+// something that can't extrapolate: the fill polygon now includes
+// front_stop_corners()[3] and [2] (its FULL trailing edge, both real
+// corners of a real polygon, not an interpolated point along it)
+// directly as vertices, with the device's real edge point inserted
+// immediately after — so the seam is always a direct, in-range
+// connection between two real geometric points, never a computed
+// fraction that can land outside the shape it's supposed to describe.
+// The back seam uses the same technique.
+//
+// The back also had a second, separate problem: the visible top
+// surface flattened out into a ~3mm shelf before the back wall,
+// because the flat foot rectangle (a constant flat_foot_t=3 slab)
+// used to run the device's FULL depth, capping the fill's own sloped
+// surface wherever it dipped below Z=flat_foot_t (inevitable near the
+// back, since the device's real back edge sits at Z~2.15, below
+// flat_foot_t itself). Fixed by starting the flat foot rectangle at
+// the back wall's own trailing edge instead of the front — the
+// front_stop+fill union already reaches Z=0 across its own full span
+// on its own, so the flat foot's only remaining job is the back
+// region the mounting hole actually needs it for, and the visible
+// surface is now the continuous slope/wall, not an added flat cap.
+function device_edge_front_yz() = [groove_y - groove_w/2 + groove_clr/2, device_z_off];
+function device_edge_back_yz() =
+    [slab_t*cos(tilt) + (groove_y - groove_w/2 + groove_clr/2),
+     -slab_t*sin(tilt) + device_z_off];
+edge_fill_overlap = 0.3;   // deliberate overlap into the device's edge,
+                            // same margin convention as the wall shift
+
+// Point on the back wall's own trailing (device-facing) edge at a
+// given fraction t — used ONLY with t values that are provably inside
+// [0,1] by construction (unlike the old front gusset's t_b), since
+// flat_foot_t always sits between the wall's own bottom (embed_target_z)
+// and top (channel_len).
+function back_upright_trailing_edge_pt(t) =
+    let(b0 = back_upright_corners()[0], b1 = back_upright_corners()[1])
+    [b0[0] + t*(b1[0]-b0[0]), b0[1] + t*(b1[1]-b0[1])];
+function fill_back_pt() =
+    let(b0 = back_upright_corners()[0], b1 = back_upright_corners()[1],
+        t = (flat_foot_t - b0[1]) / (b1[1] - b0[1]))
+    back_upright_trailing_edge_pt(t);
+
+module stand_edge_fill_2d() {
+    c3 = front_stop_corners()[3];
+    c2 = front_stop_corners()[2];
+    pf = device_edge_front_yz();
+    pb = device_edge_back_yz();
+    polygon([
+        c3,
+        c2,
+        [pf[0], pf[1] + edge_fill_overlap],
+        [pb[0], pb[1] + edge_fill_overlap],
+        fill_back_pt(),
+        [fill_back_pt()[0], 0],
+        [c3[0], 0]
+    ]);
+}
+
+// The device's real back corner (device_edge_back_yz()) is exactly
+// where the fill's sloped support surface meets the back wall's
+// rising face — a sharp internal (concave) corner. That's fine for an
+// idealised knife-edge device corner, but any real edge radius or
+// chamfer on the actual shell would hit this sharp corner before its
+// two flat faces (bottom + back) are both fully seated, holding the
+// device slightly proud of its intended position. Relieved with a
+// small notch cut right at that corner, angled to the wall's own
+// (u,v) frame — the exact same rotate(-tilt) + translate(groove_y,
+// device_z_off) chain the groove cut and back wall themselves use —
+// so the cutter's own edges run parallel to the real corner instead
+// of crossing it at an angle (an earlier axis-aligned version left a
+// diagonal sliver of the actual chamfer uncut).
+//
+// This angled cut is correctly POSITIONED, but cutting it straight out
+// of the baseplate left too little material behind it at this corner
+// (point-probed as low as ~0.5mm in one attempt to shrink the cut
+// itself, which fixed the thinness but visibly failed to clear the
+// full chamfer at a shallow viewing angle — confirmed from a
+// screenshot). Rather than keep shrinking the relief and re-litigating
+// how much chamfer it actually clears, the fix is bottom_pad_t below —
+// a full extra mm of material under the ENTIRE foot (not just the
+// separate flat_foot_t rectangle, which starts at fill_back_pt() and
+// never actually reaches this corner's Y range in the first place —
+// checked directly, fill_back_pt()[0]=69.6 vs. this corner sitting
+// around Y=68.5-69.2). The relief's own size/position here is
+// unchanged from the original, correctly-angled version.
+back_relief_z0 = device_edge_back_yz()[1] - 0.3;  // just below the device's real corner
+back_relief_z1 = flat_foot_t + 0.5;               // a bit above fill_back_pt()
+back_relief_depth = 0.6;                          // how far into the wall, along u
+
+module stand_back_relief_2d() {
+    v0 = v_at_z(u_back_trail, back_relief_z0);
+    v1 = v_at_z(u_back_trail, back_relief_z1);
+    translate([groove_y, device_z_off]) rotate(-tilt)
+        translate([u_back_trail - back_relief_depth, v0])
+            square([back_relief_depth, v1 - v0]);
+}
+
+// Extra material under the ENTIRE foot (not the separate flat_foot_t
+// rectangle — see stand_edge_fill_2d()'s comment on why that one
+// doesn't reach this corner), added below Z=0 across the whole depth.
+// Doesn't touch anything above Z=0 — front stop height, opening width,
+// relief position, mounting-hole depth are all unchanged, this just
+// gives the relief cut (and everything else) more material to sit on.
+bottom_pad_t = 1;
+module stand_bottom_pad_2d() {
+    y0 = front_stop_corners()[0][0];
+    translate([y0, -bottom_pad_t])
+        square([stand_depth - y0, bottom_pad_t]);
+}
+
+// flat_foot_t (defined up near channel_wall_t, see its own comment)
+// had to shrink for a reason unrelated to material use: the mounting
+// hole's axis runs at a shallow angle, and a straight screwdriver
+// approaching along that line from outside the counterbore was
+// hitting the top of a 6mm-thick foot only ~11.5mm past the screw
+// head — not enough clear shaft length. Checked directly: at 6mm the
+// foot's top surface intersects that line at 21.5mm out from the
+// shell face (counterbore ends at 10mm, leaving only 11.5mm clear);
+// at 3mm that pushes out to 35.9mm (25.9mm clear), confirmed by
+// point-probing the actual exported mesh along the hole's own axis
+// out to 37mm — open the entire way. (That screwdriver-clearance
+// concern turned out not to matter in practice — see
+// corner_mount_holes() below — but the 3mm baseline it produced is
+// still the right starting point for this dimension.)
+//
+// Starts at fill_back_pt() rather than the front of the foot — see
+// the fill's own comment above for why: front_stop+fill already
+// covers Z=0 across their own full span, so this rectangle's only
+// remaining job is providing the mounting-hole-bearing material from
+// the back wall onward.
+module stand_flat_foot_and_uprights_2d() {
+    difference() {
+        union() {
+            translate([fill_back_pt()[0], 0])
+                square([stand_depth - fill_back_pt()[0], flat_foot_t]);
+            stand_front_stop_2d();
+            stand_back_upright_2d();
+            stand_edge_fill_2d();
+            stand_bottom_pad_2d();
+        }
+        stand_back_relief_2d();
+    }
+}
+
+// Permanent-mounting screw hole through the back wall (the one on the
+// device's EXTERIOR-back side, u > u_back_trail — the device's own
+// face side sits toward u_front_trail), coaxial with the SAME bottom
+// corner-post hole already cut through the shell.
+mount_clr_len = 6;
+mount_cb_depth = 4;
+mount_cb_d = 6.5;      // matches the shell's own corner counterbore
+mount_clr_d = 3.4;     // matches the shell's own corner clearance hole
+// Screw: 6mm clearance + 4mm counterbore = 10mm through the foot +
+// 6.4mm shell clearance (lid_t+lip_h) + up to 9.6mm post engagement
+// (same M3x16 already used for the 4 standard corner screws) ~= 26mm.
+// M3x25 close enough (~8.6mm engagement), M3x30 for full engagement.
+
+// A previous version of this file extended the drilled cylinder
+// another 25mm past the counterbore, on the theory that a screwdriver
+// needs a clear approach path beyond the screw itself. Wrong on two
+// counts: mount_clr_d=3.4mm is sized for the SCREW's own shank, nowhere
+// near wide enough for an actual screwdriver shaft/bit to pass through
+// — so the extension couldn't have done its stated job even if the
+// clearance concern were real — and in practice it isn't needed at
+// all (the screw is started and driven at an angle, not down a dead
+// straight tunnel). Reverted to the plain 10mm hole (clearance +
+// counterbore only).
+
+module corner_mount_holes() {
+    for (sx = [-1, 1])
+        translate([sx * post_off, -post_off, slab_t])
+            union() {
+                cylinder(d = mount_clr_d, h = mount_clr_len);
+                translate([0, 0, mount_clr_len])
+                    cylinder(d = mount_cb_d, h = mount_cb_depth + eps);
+            }
+}
+
+module stand_feet() {
+    difference() {
+        for (sx = [-1, 1])
+            translate([sx * foot_x, 0, 0])
+                rotate([90, 0, 90]) linear_extrude(foot_w, center = true)
+                    stand_flat_foot_and_uprights_2d();
+        translate([0, groove_y - groove_w/2 + groove_clr/2, device_z_off])
+            rotate([-tilt, 0, 0]) translate([0, 0, face_w/2])
+                rotate([0, 0, 180]) rotate([90, 0, 0])
+                    translate([0, 0, -0]) corner_mount_holes();
     }
 }
 
 // ----------------------------------------------------------------
 // assembly view (form check only — F5 preview this)
 // ----------------------------------------------------------------
+// See true_colors near [Part] above — dark colourway vs. a high-
+// contrast preview palette (distinct hues, not just lighter versions
+// of the same dark colours, so the three parts stay easy to tell
+// apart while editing).
+//
+// The dark colourway itself was originally near-black (#20242c/
+// #2a2f3a/#181b22, all L=11-20% in the same blue-grey hue) — close
+// enough to identical that the whole model read as a flat silhouette
+// with no visible shading at all, not just "dark". Lightened to
+// L~30-45% in the same hue/relative ordering (stand darkest, shell
+// lightest) — still reads as a dark, subtle colourway, but OpenSCAD's
+// own shading now actually shows surface detail and part boundaries.
+faceplate_color = true_colors ? "#454b58" : "#e8734d";
+shell_color     = true_colors ? "#565f70" : "#4a90d9";
+stand_color     = true_colors ? "#363c48" : "#7cb342";
+
 module device() {
-    color("#20242c") faceplate();
-    color("#2a2f3a") translate([0, 0, slab_t]) rotate([180, 0, 0]) shell();
+    color(faceplate_color) faceplate();
+    color(shell_color) translate([0, 0, slab_t]) rotate([180, 0, 0]) shell();
 }
 
 module assembly() {
-    color("#181b22") stand();
-    translate([0, groove_y - groove_w/2 + groove_clr/2, 8.6])
+    // Desk stand isn't part of a wall-mount build (see mount_type) —
+    // skip it in the preview so "wall" doesn't show a part you
+    // wouldn't actually print/fit. Doesn't affect the device's own
+    // transform below: groove_y/device_z_off/tilt etc. are plain
+    // parameters, not derived from stand_feet()'s rendered geometry,
+    // so this is a safe, preview-only change.
+    if (mount_type != "wall")
+        color(stand_color) stand_feet();
+    translate([0, groove_y - groove_w/2 + groove_clr/2, device_z_off])
         rotate([-tilt, 0, 0]) translate([0, 0, face_w/2])
             rotate([0, 0, 180]) rotate([90, 0, 0])
                 translate([0, 0, -0]) device();
@@ -721,7 +1305,8 @@ if (part == "lattice")   lattice();
 if (part == "diffuser")  diffuser();
 if (part == "coupon_diffuser") coupon_diffuser();
 if (part == "shell")     shell();
-if (part == "stand")     stand();
+if (part == "stand_lowtail") stand_lowtail();
+if (part == "stand_feet")    stand_feet();
 if (part == "coupon")    coupon();
 if (part == "pod_coupon") pod_coupon();
 if (part == "assembly")  assembly();
