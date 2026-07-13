@@ -9,3 +9,6 @@
 # though the firmware source (and its own matching .gitignore) lives
 # on the firmware branch, not main
 .pio/
+
+# python bytecode (freecadcmd compiles step_export/ scripts on import)
+__pycache__/
