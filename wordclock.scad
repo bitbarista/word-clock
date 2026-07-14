@@ -1322,9 +1322,19 @@ module face_lit() {
     }
 }
 
+// unlit LED-stack blank: in the real device the diffuser + panel sit
+// directly behind the stencil, so unlit letters read near-black — but
+// assembly() doesn't model the drop-ins, leaving the voids open
+// straight through to the vents/background. Fill the panel opening
+// with a dark slab so renders show unlit letters the way the built
+// clock does. Preview-only, like everything else in device().
+panel_blank_color = "#171a20";
+
 module device() {
     color(faceplate_color) faceplate();
     face_lit();
+    color(panel_blank_color) translate([0, 0, t_front])
+        linear_extrude(1) square(cells * pitch + 1, center = true);
     color(shell_color) translate([0, 0, slab_t]) rotate([180, 0, 0]) shell();
 }
 

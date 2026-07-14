@@ -582,3 +582,11 @@ openscad -o renders/assembly_invaders.png --imgsize=1400,1150 \
 renderer, which is what the colour() calls need anyway. The "time"
 frame shows 4:23 — IT IS TWENTY THREE MINUTES PAST FOUR, the same
 per-minute example the README leads with.
+
+First cut of these renders let the background shine straight through
+the unlit voids and out the back vents — assembly() doesn't model the
+diffuser/panel drop-ins, so the stencil was open clean through, which
+the built device never is. `device()` now also draws a near-black
+`panel_blank_color` slab filling the panel opening behind the stencil
+(preview-only, like the rest), so unlit letters read near-black the
+way they do against the real (dark, unlit) diffuser stack.
