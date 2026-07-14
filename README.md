@@ -1,6 +1,6 @@
 # TIME INVADERS — arcade word clock
 
-![Assembled word clock on its desk feet](renders/assembly.png)
+![Assembled word clock on its desk feet showing IT IS TWENTY THREE MINUTES PAST FOUR](renders/assembly.png)
 
 A 16×16 word clock with an 8-bit arcade heart: the time reads as words
 to the exact minute (`IT IS TWENTY THREE MINUTES PAST FOUR`), but time
@@ -10,6 +10,12 @@ resolves into the new one — and the filler letters hide arcade words
 DONKEY KONG, ASTEROIDS, Q*BERT). The enclosure is deliberately subtle —
 a plain dark slab that passes at a work desk, on raked feet or
 wall-mounted; the arcade lives in the light, not the shell.
+
+<img src="renders/assembly_invaders.png" width="55%"
+     alt="The same clock showing a frame of the Space Invaders attract animation — an invader sprite and cannon drawn in lit letters">
+
+Every pixel is a letter: the attract-mode sprites are drawn by lighting
+grid cells, like the invader and cannon above.
 
 **▶ [Try it in your browser](https://bitbarista.github.io/word-clock-demo/simulator.html)** —
 live simulator running the real firmware logic: word grid, transitions,

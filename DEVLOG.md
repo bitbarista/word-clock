@@ -554,3 +554,31 @@ still running warm.
 
 **Reprint required:** `shell()` only — the stencil, diffuser, lattice,
 and panel side of the stack are unchanged.
+
+## README hero renders — lighting the face up (`face_display`)
+
+The landing-page render originally showed the enclosure dark. Since
+the letters are through-voids, "switching the clock on" in a render is
+just dropping bright glyphs into the voids — `face_display` ("off" /
+"time" / "invaders", in the [Part] Customizer tab) does exactly that,
+reusing `letters2d`'s placement/mirror so the lit glyphs land in the
+stencil voids, filled through the plate and 0.05 proud of the front
+face. Preview-only: it draws inside `device()`, so no printable part
+is affected. Word coordinates and the invader/cannon sprites are the
+firmware's own tables (`grid.cpp` / `animations.cpp`, mirrored in
+`docs/simulator.html`).
+
+The committed renders (both 1400×1150, same camera so they read as a
+pair):
+
+```
+openscad -o renders/assembly.png          --imgsize=1400,1150 \
+  --camera=0,0,92,78,0,25,560 -D 'face_display="time"'     wordclock.scad
+openscad -o renders/assembly_invaders.png --imgsize=1400,1150 \
+  --camera=0,0,92,78,0,25,560 -D 'face_display="invaders"' wordclock.scad
+```
+
+`-o png` without `--render` uses the (fast, colour-capable) preview
+renderer, which is what the colour() calls need anyway. The "time"
+frame shows 4:23 — IT IS TWENTY THREE MINUTES PAST FOUR, the same
+per-minute example the README leads with.

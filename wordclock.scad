@@ -26,6 +26,13 @@ part = "assembly"; // [assembly, faceplate, lattice, diffuser, shell, stand_lowt
 // filament you choose) — true_colors=true (default) just previews a
 // dark colourway as one example, not a manufacturing constraint.
 true_colors = true; // [true, false]
+// Light the face up in the assembly preview: "time" spells out
+// IT IS TWENTY THREE MINUTES PAST FOUR (4:23 — shows off the
+// per-minute wording), "invaders" shows a frame of the Space
+// Invaders attract animation (sprites match the firmware's
+// animations.cpp). Render/preview only — adds nothing to any
+// printable part, and does nothing outside part="assembly".
+face_display = "off"; // [off, time, invaders]
 
 /* [Mounting] */
 // Single switch for the two mounting styles — sets power_pos and
@@ -1279,8 +1286,45 @@ faceplate_color = true_colors ? "#454b58" : "#e8734d";
 shell_color     = true_colors ? "#565f70" : "#4a90d9";
 stand_color     = true_colors ? "#363c48" : "#7cb342";
 
+// face_display: bright glyphs dropped into the stencil voids so a
+// render can show the clock switched on. Word coordinates
+// [row, col, len] and the sprites match the firmware tables
+// (grid.cpp / animations.cpp, mirrored in docs/simulator.html).
+// The glyphs reuse letters2d's exact placement + mirror, filling
+// each void through the plate and standing 0.05 proud of the front
+// face so the lit face renders cleanly over the plate.
+TIME_DEMO = [[0,0,2], [0,3,2], [1,0,6], [6,0,5], [8,0,7], [8,8,4],
+             [10,8,4]];  // IT IS TWENTY THREE MINUTES PAST FOUR
+INVADER = ["..X.....X..", "...X...X...", "..XXXXXXX..", ".XX.XXX.XX.",
+           "XXXXXXXXXXX", "X.XXXXXXX.X", "X.X.....X.X", "...XX.XX..."];
+CANNON  = ["...X...", "..XXX..", "XXXXXXX", "XXXXXXX"];
+
+function word_cells(segs) = [for (s = segs, k = [0 : s[2]-1]) [s[0], s[1]+k]];
+function sprite_cells(spr, r0, c0) =
+    [for (r = [0:len(spr)-1], c = [0:len(spr[r])-1])
+        if (spr[r][c] == "X") [r0+r, c0+c]];
+
+module lit_cells(cl, col)
+    color(col)
+        translate([0, 0, -0.05]) linear_extrude(t_front + 0.05)
+            mirror([1, 0, 0])
+                for (rc = cl)
+                    translate([(rc[1] - (cells-1)/2) * pitch,
+                               ((cells-1)/2 - rc[0]) * pitch])
+                        glyph2d(GRID[rc[0]][rc[1]], px = font_px);
+
+module face_lit() {
+    if (face_display == "time")
+        lit_cells(word_cells(TIME_DEMO), "#ffd98c");
+    if (face_display == "invaders") {
+        lit_cells(sprite_cells(INVADER, 2, 2), "#4be15f");
+        lit_cells(sprite_cells(CANNON, 12, 4), "#e8ecff");
+    }
+}
+
 module device() {
     color(faceplate_color) faceplate();
+    face_lit();
     color(shell_color) translate([0, 0, slab_t]) rotate([180, 0, 0]) shell();
 }
 
