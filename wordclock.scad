@@ -362,6 +362,13 @@ device_z_off = 8.6;
 $fa = 4; $fs = 0.4;
 eps = 0.01;
 
+// face_display="invaders" attract-march frame index, 0-9 — drives the
+// README GIF (see render_readme.sh): the invader ping-pongs across
+// the grid's 5 free columns alternating the two classic sprite poses,
+// the cannon drifts the opposite way. Default 2 = the committed
+// static renders/assembly_invaders.png frame.
+anim_t = 2;
+
 // ----------------------------------------------------------------
 // The letter grid, as read from the front. PER-MINUTE resolution:
 //   IT IS TWENTY THREE MINUTES PAST FOUR
@@ -1295,9 +1302,18 @@ stand_color     = true_colors ? "#363c48" : "#7cb342";
 // face so the lit face renders cleanly over the plate.
 TIME_DEMO = [[0,0,2], [0,3,2], [1,0,6], [6,0,5], [8,0,7], [8,8,4],
              [10,8,4]];  // IT IS TWENTY THREE MINUTES PAST FOUR
-INVADER = ["..X.....X..", "...X...X...", "..XXXXXXX..", ".XX.XXX.XX.",
-           "XXXXXXXXXXX", "X.XXXXXXX.X", "X.X.....X.X", "...XX.XX..."];
-CANNON  = ["...X...", "..XXX..", "XXXXXXX", "XXXXXXX"];
+INVADER_A = ["..X.....X..", "...X...X...", "..XXXXXXX..", ".XX.XXX.XX.",
+             "XXXXXXXXXXX", "X.XXXXXXX.X", "X.X.....X.X", "...XX.XX..."];
+INVADER_B = ["..X.....X..", "X..X...X..X", "X.XXXXXXX.X", "XXX.XXX.XXX",
+             ".XXXXXXXXX.", "..XXXXXXX..", "..X.....X..", ".X.......X."];
+CANNON    = ["...X...", "..XXX..", "XXXXXXX", "XXXXXXX"];
+
+// attract-march ping-pong columns, indexed by anim_t (see [Hidden]):
+// the 11-wide invader has columns 0-5 free on the 16-cell grid, the
+// 7-wide cannon 0-9. anim_t=2 gives the invader at col 2 / cannon at
+// col 4 — the static render frame.
+INV_COLS    = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1];
+CANNON_COLS = [6, 5, 4, 3, 2, 2, 3, 4, 5, 6];
 
 function word_cells(segs) = [for (s = segs, k = [0 : s[2]-1]) [s[0], s[1]+k]];
 function sprite_cells(spr, r0, c0) =
@@ -1317,8 +1333,9 @@ module face_lit() {
     if (face_display == "time")
         lit_cells(word_cells(TIME_DEMO), "#ffd98c");
     if (face_display == "invaders") {
-        lit_cells(sprite_cells(INVADER, 2, 2), "#4be15f");
-        lit_cells(sprite_cells(CANNON, 12, 4), "#e8ecff");
+        lit_cells(sprite_cells(anim_t % 2 == 0 ? INVADER_A : INVADER_B,
+                               2, INV_COLS[anim_t % 10]), "#4be15f");
+        lit_cells(sprite_cells(CANNON, 12, CANNON_COLS[anim_t % 10]), "#e8ecff");
     }
 }
 

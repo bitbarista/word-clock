@@ -590,3 +590,17 @@ the built device never is. `device()` now also draws a near-black
 `panel_blank_color` slab filling the panel opening behind the stencil
 (preview-only, like the rest), so unlit letters read near-black the
 way they do against the real (dark, unlit) diffuser stack.
+
+The invaders frame then grew into an animated GIF for the README
+(`renders/assembly_invaders.gif`): a hidden `anim_t` param (0–9)
+ping-pongs the invader across the grid's five free columns while
+alternating the two classic sprite poses (both from animations.cpp),
+with the cannon drifting the opposite way; anim_t=2 reproduces the
+static PNG exactly. All three README images now come from one script,
+`./render_readme.sh` (10 frames + 2 stills, ~30 s each, then
+ImageMagick). Two traps it works around: this machine's snap-confined
+openscad can't write outside the repo, and ImageMagick's `-layers
+Optimize` corrupted the global palette (cream background came out
+lavender) — `-layers OptimizeFrame` optimizes without remapping.
+Renders are byte-deterministic here, so a clean `git status` after
+running the script doubles as a regression check.
