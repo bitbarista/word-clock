@@ -399,21 +399,38 @@ static void attractGalaga() {
 }
 
 static void attractDonkeyKong() {
-    static const int8_t path[][2] = {                      // zigzag down alternating girders
-        {2,1},{2,3},{2,5},{2,7},{2,9},{2,11},
-        {4,11},{4,9},{4,7},{4,5},{4,3},{4,1},
-        {6,1},{6,3},{6,5},{6,7},{6,9},{6,11},
-        {8,11},{8,9},{8,7},{8,5},{8,3},{8,1},
-        {10,1},{10,3},{10,5},{10,7},{10,9},{10,11},
-        {12,11},{13,11},{14,11},{15,11}
-    };
-    for (auto& p : path) {
+    // the classic scene: DK hurls a barrel down the girders and Mario jumps it
+    static const CRGB GIRDER(0xF9, 0x4D, 0x6A);
+    static const CRGB MARIO_BLUE(0x5A, 0x6A, 0xFF);
+    static const CRGB PAULINE(0xFF, 0x9A, 0xD9);
+    auto scene = [](bool marioUp, uint8_t dkShift) {
         clearFrame();
-        drawSprite(DK_SPR, 5, 4, 0, 0, CRGB(0xC8, 0x69, 0x3B));
-        setRC(p[0], p[1],     DK_ORANGE);
-        setRC(p[0], p[1] + 1, DK_ORANGE);
-        showFrame(70);
+        for (uint8_t r = 5; r < GRID_N; r += 5)
+            for (uint8_t c = 0; c < GRID_N; c++) setRC(r, c, GIRDER);
+        for (uint8_t r = 6; r < 10; r++) setRC(r, 3, GHOST_CYAN);       // ladders
+        for (uint8_t r = 11; r < 15; r++) setRC(r, 12, GHOST_CYAN);
+        drawSprite(DK_SPR, 5, 4, 1, dkShift, CRGB(0xC8, 0x69, 0x3B));   // DK on the top girder
+        setRC(3, 14, PAULINE); setRC(4, 14, PAULINE);                   // Pauline
+        int mr = marioUp ? 11 : 13;                                     // Mario, 2x2: cap + overalls
+        setRC(mr, 8, GHOST_RED); setRC(mr, 9, GHOST_RED);
+        setRC(mr + 1, 8, MARIO_BLUE); setRC(mr + 1, 9, MARIO_BLUE);
+    };
+    for (uint8_t f = 0; f < 6; f++) { scene(false, f & 1); showFrame(180); }   // DK beats his chest
+    int8_t path[43][2];
+    uint8_t n = 0;
+    for (int8_t c = 5; c <= 14; c++) { path[n][0] = 3; path[n++][1] = c; }     // top level, rolls right
+    path[n][0] = 6; path[n++][1] = 14;                                         // falls off the edge
+    for (int8_t c = 14; c >= 0; c--) { path[n][0] = 8; path[n++][1] = c; }     // middle level, rolls left
+    path[n][0] = 11; path[n++][1] = 0;                                         // falls again
+    for (int8_t c = 0; c <= 15; c++) { path[n][0] = 13; path[n++][1] = c; }    // bottom level, exits right
+    for (uint8_t i = 0; i < n; i++) {
+        int br = path[i][0], bc = path[i][1];
+        scene(br == 13 && bc >= 5 && bc <= 11, 0);                             // Mario jumps the barrel
+        setRC(br, bc, DK_ORANGE); setRC(br, bc + 1, DK_ORANGE);
+        setRC(br + 1, bc, DK_ORANGE); setRC(br + 1, bc + 1, DK_ORANGE);
+        showFrame(80);
     }
+    scene(false, 0); showFrame(400);
 }
 
 static void attractQbert() {
