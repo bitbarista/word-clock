@@ -24,7 +24,6 @@ static const char* const CANNON[4]      = { "...X...", "..XXX..", "XXXXXXX", "XX
 static const char* const BOOM_A[5]      = { "..X..", ".....", "X.X.X", ".....", "..X.." };
 static const char* const BOOM_B[5]      = { "X.X.X", ".X.X.", "X.X.X", ".X.X.", "X.X.X" };
 
-static const char* const SHIP[4]        = { "..X..", ".XXX.", "XXXXX", ".X.X." };
 static const char* const ROCK_BIG[5]    = { ".X.X.", "XXXXX", "X.XXX", "XXXXX", ".X.X." };
 static const char* const ROCK_SMALL[3]  = { ".X.", "XXX", ".X." };
 static const char* const BEE_SPR[4]     = { "..X..", ".XXX.", "XXXXX", "X.X.X" };
@@ -298,31 +297,80 @@ static void attractCoin() {
 }
 
 static void attractAsteroids() {
-    int shipC = 2;
-    float rockR = -4, rockC = 8;
-    while (rockR < 8) {                                    // rock drifts down toward the ship
-        rockR += 0.6f;
+    // ship spins at the centre of the field; rocks drift in and get picked off
+    static const float H8[8][2] = {
+        { -1, 0 }, { -0.71f, 0.71f }, { 0, 1 }, { 0.71f, 0.71f },
+        { 1, 0 }, { 0.71f, -0.71f }, { 0, -1 }, { -0.71f, -0.71f }
+    };
+    static const CRGB SHIP_WHITE(0xE8, 0xEC, 0xFF);
+    auto ship = [](uint8_t head) {
+        float ur = H8[head][0], uc = H8[head][1], pr = uc, pc = -ur;
+        auto px = [](float r, float c) { setRC((int)lroundf(r), (int)lroundf(c), SHIP_WHITE); };
+        px(7 + 2.2f * ur, 7 + 2.2f * uc);                       // nose
+        px(7 + 1.1f * ur, 7 + 1.1f * uc);
+        px(7, 7);
+        px(7 - 1.2f * ur + 0.9f * pr, 7 - 1.2f * uc + 0.9f * pc);   // rear wings
+        px(7 - 1.2f * ur - 0.9f * pr, 7 - 1.2f * uc - 0.9f * pc);
+    };
+    auto headingToward = [](float r, float c) -> uint8_t {      // nearest of the 8 headings, 0 = up
+        float a = atan2f(c - 7, -(r - 7));
+        int h = (int)lroundf(a / 0.7853982f);                   // pi/4
+        return (uint8_t)(((h % 8) + 8) % 8);
+    };
+    struct Rock { float r, c, vr, vc; int8_t wait; };
+    struct Frag { float r, c, vr, vc; };
+    Rock rocks[2] = { { -5, 10, 0.45f, -0.10f, 0 }, { 16, 0, -0.40f, 0.22f, 10 } };
+    Frag frags[4];
+    uint8_t nRocks = 2, nFrags = 0, head = 6, spin = 6;
+    int8_t doneSpin = -1;
+    struct { float r, c, vr, vc; bool live, fresh; } bullet = {};
+    for (uint8_t f = 0; f < 80; f++) {
+        for (uint8_t i = 0; i < nRocks; i++) {                  // rocks menace the ship but never reach it
+            Rock& k = rocks[i];
+            if (k.wait > 0) { k.wait--; continue; }
+            float nr = k.r + k.vr, nc = k.c + k.vc;
+            if (hypotf(nr + 2 - 7, nc + 2 - 7) > 6.0f) { k.r = nr; k.c = nc; }
+        }
+        for (uint8_t i = 0; i < nFrags; i++) { frags[i].r += frags[i].vr; frags[i].c += frags[i].vc; }
+        for (int8_t i = nFrags - 1; i >= 0; i--)
+            if (frags[i].r < -3 || frags[i].r > GRID_N || frags[i].c < -3 || frags[i].c > GRID_N)
+                frags[i] = frags[--nFrags];
+        if (spin > 0) { head = (head + 1) % 8; spin--; }
+        else if (!bullet.live && nRocks && rocks[0].wait == 0) {
+            int t = headingToward(rocks[0].r + 2, rocks[0].c + 2);
+            int diff = ((t - head) % 8 + 8) % 8;
+            if (diff == 0) {
+                // fire: the bullet flies at the rock's centre (heading is 8-way quantised)
+                float dr = rocks[0].r + 2 - 7, dc = rocks[0].c + 2 - 7, d = hypotf(dr, dc);
+                bullet = { 7 + 2.2f * dr / d, 7 + 2.2f * dc / d, 1.2f * dr / d, 1.2f * dc / d, true, true };
+            }
+            else head = (head + (diff <= 4 ? 1 : 7)) % 8;
+        }
+        if (bullet.live && !bullet.fresh) {
+            bullet.r += bullet.vr; bullet.c += bullet.vc;
+            if (nRocks && hypotf(bullet.r - (rocks[0].r + 2), bullet.c - (rocks[0].c + 2)) < 1.7f) {
+                Rock& k = rocks[0];
+                float d = hypotf(bullet.vr, bullet.vc), pr = bullet.vc / d, pc = -bullet.vr / d;
+                frags[nFrags++] = { k.r + 1, k.c + 1, k.vr * 0.6f + pr, k.vc * 0.6f + pc };
+                frags[nFrags++] = { k.r + 1, k.c + 1, k.vr * 0.6f - pr, k.vc * 0.6f - pc };
+                rocks[0] = rocks[1]; nRocks--; bullet.live = false;
+                if (!nRocks) doneSpin = 8;                      // victory spin while the frags drift off
+            }
+            else if (bullet.r < -1 || bullet.r > GRID_N || bullet.c < -1 || bullet.c > GRID_N)
+                bullet.live = false;
+        }
+        bullet.fresh = false;
+        if (doneSpin > 0) { head = (head + 1) % 8; doneSpin--; }
         clearFrame();
-        drawSprite(SHIP, 5, 4, 12, shipC, CRGB(0xE8, 0xEC, 0xFF));
-        drawSprite(ROCK_BIG, 5, 5, (int)rockR, (int)rockC, ASTEROID_GREY);
+        for (uint8_t i = 0; i < nRocks; i++)
+            if (rocks[i].wait == 0)
+                drawSprite(ROCK_BIG, 5, 5, (int)rocks[i].r, (int)rocks[i].c, ASTEROID_GREY);
+        for (uint8_t i = 0; i < nFrags; i++)
+            drawSprite(ROCK_SMALL, 3, 3, (int)lroundf(frags[i].r), (int)lroundf(frags[i].c), ASTEROID_GREY);
+        ship(head);
+        if (bullet.live) setRC((int)lroundf(bullet.r), (int)lroundf(bullet.c), colAccent());
         showFrame(90);
-    }
-    int hitR = (int)rockR + 2;
-    for (int r = 11; r > hitR; r--) {                       // the shot
-        clearFrame();
-        drawSprite(SHIP, 5, 4, 12, shipC, CRGB(0xE8, 0xEC, 0xFF));
-        drawSprite(ROCK_BIG, 5, 5, (int)rockR, (int)rockC, ASTEROID_GREY);
-        setRC(r, shipC + 2, CRGB::White);
-        showFrame(35);
-    }
-    float lC = rockC, rC = rockC + 2, lR = rockR, rR = rockR;
-    for (uint8_t step = 0; step < 10; step++) {             // rock splits, fragments drift apart
-        lC -= 0.9f; rC += 0.9f; lR += 0.4f; rR += 0.4f;
-        clearFrame();
-        drawSprite(SHIP, 5, 4, 12, shipC, CRGB(0xE8, 0xEC, 0xFF));
-        drawSprite(ROCK_SMALL, 3, 3, (int)lR, (int)lC, ASTEROID_GREY);
-        drawSprite(ROCK_SMALL, 3, 3, (int)rR, (int)rC, ASTEROID_GREY);
-        showFrame(70);
+        if (doneSpin == 0 && !nRocks && !nFrags) break;
     }
 }
 
@@ -369,26 +417,40 @@ static void attractDonkeyKong() {
 }
 
 static void attractQbert() {
+    // 6-level pyramid of 2x2 cubes fills the face: level l top row 2+2l, cube p left col 7-l+2p
     static const CRGB CUBE_BASE(0x4B, 0x5A, 0xB8);
     static const CRGB QBERT_COL(0xFF, 0xD9, 0x3B);
-    CRGB level[5][9];
-    for (auto& row : level) for (auto& c : row) c = CUBE_BASE;
+    bool lit[6][6] = {};
 
-    auto draw = [&](int hopL) {
+    auto draw = [&](int qR, int qC, bool flash, uint16_t ms) {  // qR/qC = Q*Bert's 2x2 top-left, -1 = absent
         clearFrame();
-        for (uint8_t l = 0; l <= 4; l++) {
-            uint8_t w = l * 2 + 1;
-            int startC = 8 - l;
-            for (uint8_t p = 0; p < w; p++) setRC(6 + l, startC + p, level[l][p]);
-        }
-        if (hopL >= 0) setRC(6 + hopL, 8 - hopL, QBERT_COL);
-        showFrame(260);
+        for (uint8_t l = 0; l < 6; l++)
+            for (uint8_t p = 0; p <= l; p++) {
+                int r = 2 + 2 * l, c = 7 - l + 2 * p;
+                CRGB top = lit[l][p] ? (flash ? CRGB(CRGB::White) : DK_ORANGE) : CUBE_BASE;
+                CRGB side = scaled(top, 110);                   // darker lower face for a hint of depth
+                setRC(r, c, top); setRC(r, c + 1, top);
+                setRC(r + 1, c, side); setRC(r + 1, c + 1, side);
+            }
+        if (qR >= 0)
+            for (uint8_t dr = 0; dr < 2; dr++)
+                for (uint8_t dc = 0; dc < 2; dc++) setRC(qR + dr, qC + dc, QBERT_COL);
+        showFrame(ms);
     };
-    draw(-1);
-    for (uint8_t l = 0; l <= 4; l++) {                      // hop diagonally, changing each cube
-        level[l][0] = DK_ORANGE;
-        draw(l);
+    static const int8_t path[6][2] = { {0,0}, {1,1}, {2,1}, {3,2}, {4,2}, {5,3} };  // zigzag hop down
+    auto perchC = [](int l, int p) { return 7 - l + 2 * p; };   // Q*Bert's spot on top of cube (l,p)
+    int qr = 0, qc = perchC(0, 0);
+    draw(qr, qc, false, 500);
+    for (uint8_t i = 0; i < 6; i++) {
+        int l = path[i][0], p = path[i][1];
+        int r1 = 2 * l, c1 = perchC(l, p);
+        if (i) draw((qr + r1) / 2 - 1, (qc + c1 + 1) / 2, false, 140);  // hop apex
+        lit[l][p] = true; qr = r1; qc = c1;
+        draw(qr, qc, false, 360);
     }
+    draw(12, 10, false, 140);                                   // hops off the bottom edge
+    draw(14, 12, false, 140);
+    for (uint8_t f = 0; f < 6; f++) draw(-1, 0, f & 1, 170);    // changed cubes flash
 }
 
 void animAttract(uint8_t which) {
