@@ -829,21 +829,33 @@ async function attractGalaga(){
   }
 }
 async function attractDonkeyKong(){
-  const path=[
-    [2,1],[2,3],[2,5],[2,7],[2,9],[2,11],
-    [4,11],[4,9],[4,7],[4,5],[4,3],[4,1],
-    [6,1],[6,3],[6,5],[6,7],[6,9],[6,11],
-    [8,11],[8,9],[8,7],[8,5],[8,3],[8,1],
-    [10,1],[10,3],[10,5],[10,7],[10,9],[10,11],
-    [12,11],[13,11],[14,11],[15,11]
-  ];
-  for(const [pr,pc] of path){
+  // the classic scene: DK hurls a barrel down the girders and Mario jumps it
+  const GIRDER="#f94d6a", MARIO_BLUE="#5a6aff", PAULINE="#ff9ad9";
+  function scene(marioUp, dkShift){
     clearFrame();
-    drawSprite(DK_SPR,5,4,0,0,DK_BODY);
-    setRC(pr,pc,DK_ORANGE);
-    setRC(pr,pc+1,DK_ORANGE);
-    await showFrame(70);
+    for(const r of [5,10,15]) for(let c=0;c<GRID_N;c++) setRC(r,c,GIRDER);
+    for(let r=6;r<10;r++) setRC(r,3,GHOST_CYAN);          // ladders
+    for(let r=11;r<15;r++) setRC(r,12,GHOST_CYAN);
+    drawSprite(DK_SPR,5,4,1,dkShift,DK_BODY);             // DK on the top girder
+    setRC(3,14,PAULINE); setRC(4,14,PAULINE);             // Pauline
+    const mr=marioUp?11:13;                               // Mario, 2x2: cap + overalls
+    setRC(mr,8,GHOST_RED); setRC(mr,9,GHOST_RED);
+    setRC(mr+1,8,MARIO_BLUE); setRC(mr+1,9,MARIO_BLUE);
   }
+  for(let f=0;f<6;f++){ scene(false,f&1); await showFrame(180); }   // DK beats his chest
+  const path=[];
+  for(let c=5;c<=14;c++) path.push([3,c]);                // top level, rolls right
+  path.push([6,14]);                                      // falls off the edge
+  for(let c=14;c>=0;c--) path.push([8,c]);                // middle level, rolls left
+  path.push([11,0]);                                      // falls again
+  for(let c=0;c<=15;c++) path.push([13,c]);               // bottom level, exits right
+  for(const [br,bc] of path){
+    scene(br===13 && bc>=5 && bc<=11, 0);                 // Mario jumps the barrel
+    setRC(br,bc,DK_ORANGE); setRC(br,bc+1,DK_ORANGE);
+    setRC(br+1,bc,DK_ORANGE); setRC(br+1,bc+1,DK_ORANGE);
+    await showFrame(80);
+  }
+  scene(false,0); await showFrame(400);
 }
 async function attractQbert(){
   // 6-level pyramid of 2x2 cubes fills the face: level l top row 2+2l, cube p left col 7-l+2p
