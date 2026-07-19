@@ -4,8 +4,8 @@
 
 A 16×16 word clock with an 8-bit arcade heart: the time reads as words
 to the exact minute (`IT IS TWENTY THREE MINUTES PAST FOUR`), but time
-changes are game events — Pac-Man eats the old time, Matrix rain
-resolves into the new one — and the filler letters hide arcade words
+changes are game events — Pac-Man eats the old time, a cannon shoots
+in the new one — and the filler letters hide arcade words
 (INSERT COIN, GAME OVER, plus a hall of fame: SPACE INVADERS, GALAGA,
 DONKEY KONG, ASTEROIDS, Q*BERT). The enclosure is deliberately subtle —
 a plain dark slab that passes at a work desk, on raked feet or
@@ -190,7 +190,7 @@ is calculated but not yet soak-validated — see [DESIGN.md](DESIGN.md)).
 Lives on the [`firmware` branch](../../tree/firmware) (PlatformIO,
 ESP32-S3). NTP + web UI — animation pick/interval, colours, brightness
 schedule, timezone, panel mapping — with transition animations
-(Pac-Man eat, Matrix rain, Tetris drop, invader zap), attract mode and
+(Pac-Man eat, cannon shoot-up, Tetris drop, invader zap), attract mode and
 hidden-word easter eggs. Works fully offline too: it hosts its own
 hotspot and can take the time from your phone with one tap
 ([DESIGN.md](DESIGN.md) has the details).

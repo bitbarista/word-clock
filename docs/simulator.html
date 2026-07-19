@@ -206,7 +206,7 @@
               <div class="row"><label>Time-change style</label>
                 <select id="transStyle">
                   <option value="0">Random</option><option value="1">Pac-Man eats it</option>
-                  <option value="2">Matrix rain</option><option value="3">Cannon shoot-up</option>
+                  <option value="3">Cannon shoot-up</option>
                   <option value="4">Invader zap</option><option value="5">Tetris drop</option>
                   <option value="6">Gentle fade</option>
                 </select></div>
@@ -221,7 +221,6 @@
                 <button onclick="act('attract',2)">&#9608; Ghosts</button>
                 <button onclick="act('attract',3)">&#9608; Pac chase</button>
                 <button onclick="act('attract',4)">&#9608; Cannon duel</button>
-                <button onclick="act('attract',5)">&#9608; Matrix</button>
                 <button onclick="act('attract',6)">&#9608; Insert coin</button>
                 <button onclick="act('attract',7)">&#9608; Asteroids</button>
                 <button onclick="act('attract',8)">&#9608; Galaga</button>
@@ -408,7 +407,6 @@ const ROCK_BIG=[".X.X.","XXXXX","X.XXX","XXXXX",".X.X."];
 const ROCK_SMALL=[".X.","XXX",".X."];
 const BEE_SPR=["..X..",".XXX.","XXXXX","X.X.X"];
 const DK_SPR=["XX.XX","XXXXX",".XXX.","X.X.X"];
-const MATRIX_HEAD="#d9ffdc", MATRIX_G1="#4be15f", MATRIX_G2="#2e9440", MATRIX_G3="#1c5c2a";
 const PAC_YELLOW="#ffd93b", GHOST_RED="#ff4d4d", GHOST_CYAN="#4dd9ff", GHOST_PINK="#ffb8de", GHOST_ORANGE="#ffb847";
 const GHOST_BLUE="#3b5bff", GHOST_FLASH="#e8ecff", SI_GREEN="#4be15f", COL_WHITE="#ffffff";
 const GALAGA_BLUE="#9fd8ff", DK_ORANGE="#ff8c3b", ASTEROID_GREY="#c8d8ff", SHIP_WHITE="#e8ecff", DK_BODY="#c8693b";
@@ -433,7 +431,7 @@ const cfg = {
 const TR_RANDOM=0, TR_PAC=1, TR_MATRIX=2, TR_CANNON=3, TR_INVADER=4, TR_TETRIS=5, TR_FADE=6;
 const AT_RANDOM=0, AT_INVADERS=1, AT_GHOST=2, AT_PACCHASE=3, AT_CANNONDUEL=4, AT_MATRIX=5, AT_COIN=6;
 const AT_ASTEROIDS=7, AT_GALAGA=8, AT_DONKEYKONG=9, AT_QBERT=10, AT_COUNT=11;
-const THEME_RAINBOW=4, THEME_CUSTOM=5;   // indices into THEMES[] below (not a firmware concept yet)
+const THEME_RAINBOW=4, THEME_CUSTOM=5, THEME_PARTY=6;   // indices into THEMES[] below (Rainbow is not a firmware concept yet)
 
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const sleep = ms => new Promise(res=>setTimeout(res, REDUCED ? Math.min(ms,4) : ms));
@@ -468,6 +466,13 @@ function hsvToHex(h,s,v){
 function rainbowHue(){ return (performance.now()/40) % 360; }   // ~14.4s per full cycle
 function colTime(){ return cfg.theme===THEME_RAINBOW ? hsvToHex(rainbowHue(),1,1) : cfg.timeColor; }
 function colAccent(){ return cfg.theme===THEME_RAINBOW ? hsvToHex(rainbowHue()+180,1,1) : cfg.accentColor; }
+// Party theme: every lit letter gets its own colour — hue spread by cell
+// position (golden-angle step so neighbours contrast), drifting slowly.
+// Use this instead of colTime() wherever the cell being painted is known.
+function timeCellColor(cell){
+  return cfg.theme===THEME_PARTY ? hsvToHex(cell*137 + rainbowHue(), 1, 1) : colTime();
+}
+function fillTime(set){ for(const c of set) setCell(c, timeCellColor(c)); }
 
 function clearFrame(){ leds.fill(null); }
 function setCell(cell, color){ if(cell>=0 && cell<NUM_CELLS) leds[cell]=color; }
@@ -535,8 +540,8 @@ async function animFade(oldSet, newSet){
   for(let step=0; step<=16; step++){
     const up=step*16, down=255-up;
     clearFrame();
-    for(const c of oldSet) if(!newSet.has(c)) setCell(c, scaled(colTime(),down));
-    for(const c of newSet) setCell(c, oldSet.has(c) ? colTime() : scaled(colTime(),up));
+    for(const c of oldSet) if(!newSet.has(c)) setCell(c, scaled(timeCellColor(c),down));
+    for(const c of newSet) setCell(c, oldSet.has(c) ? timeCellColor(c) : scaled(timeCellColor(c),up));
     await showFrame(35);
   }
 }
@@ -551,7 +556,7 @@ async function animPacEat(oldSet, newSet){
   for(let i=0;i<path.length+8;i++){
     if(i<path.length) eaten.add(path[i]);
     clearFrame();
-    for(const c of oldSet) if(!eaten.has(c)) setCell(c, colTime());
+    for(const c of oldSet) if(!eaten.has(c)) setCell(c, timeCellColor(c));
     const g = path[i-7]; if(g!==undefined) setCell(g, GHOST_RED);
     if(i<path.length) setCell(path[i], PAC_YELLOW);
     await showFrame(28);
@@ -559,30 +564,8 @@ async function animPacEat(oldSet, newSet){
   clearFrame(); await showFrame(250);
   for(let step=0; step<=12; step++){
     clearFrame();
-    for(const c of newSet) setCell(c, scaled(colTime(), step*21));
+    for(const c of newSet) setCell(c, scaled(timeCellColor(c), step*21));
     await showFrame(35);
-  }
-}
-async function animMatrix(newSet, longIntro){
-  const d = Array.from({length:GRID_N}, ()=>({y:-rnd(0,18), v:0.35+Math.random()*0.75, len:rnd(4,8)}));
-  const until = performance.now() + (longIntro?6000:3200);
-  while(performance.now() < until){
-    clearFrame();
-    for(let c=0;c<GRID_N;c++){
-      d[c].y += d[c].v;
-      const head = Math.floor(d[c].y);
-      for(let k=0;k<d[c].len;k++){
-        const r=head-k;
-        if(r>=0 && r<GRID_N) setCell(idx(r,c), k===0?MATRIX_HEAD:k<2?MATRIX_G1:k<4?MATRIX_G2:MATRIX_G3);
-      }
-      if(head-d[c].len > GRID_N) d[c] = {y:-rnd(0,10), v:0.35+Math.random()*0.75, len:rnd(4,8)};
-    }
-    await showFrame(45);
-  }
-  clearFrame(); fillCells(newSet, MATRIX_G1); await showFrame(600);
-  for(let step=0; step<=12; step++){
-    clearFrame(); fillCells(newSet, blend(MATRIX_G1, colTime(), step*21));
-    await showFrame(40);
   }
 }
 async function animCannon(oldSet, newSet){
@@ -594,7 +577,7 @@ async function animCannon(oldSet, newSet){
   let cannonC = 8;
   async function drawScene(shotR, shotC){
     clearFrame();
-    for(const c of oldSet) if(remain.has(c)) setCell(c, colTime());
+    for(const c of oldSet) if(remain.has(c)) setCell(c, timeCellColor(c));
     drawSprite(CANNON,7,4,12,cannonC-3,SI_GREEN);
     if(shotR>=0) setCell(idx(shotR,shotC), colAccent());
     await showFrame(26);
@@ -617,7 +600,7 @@ async function animInvaderZap(oldSet, newSet){
     if(step===8 || step===16) iy++;
     const frm = (step&1) ? INVADER_B : INVADER_A;
     clearFrame();
-    for(const c of oldSet) if(remain.has(c)) setCell(c, colTime());
+    for(const c of oldSet) if(remain.has(c)) setCell(c, timeCellColor(c));
     drawSprite(frm,11,8,iy,ix,SI_GREEN);
     await showFrame(220);
     if(step%2===0){
@@ -637,7 +620,7 @@ async function animTetris(oldSet, newSet){
     clearFrame();
     for(const c of oldSet){
       const r = Math.floor(c/GRID_N)+shift;
-      if(r<GRID_N) setCell(idx(r, c%GRID_N), colTime());
+      if(r<GRID_N) setCell(idx(r, c%GRID_N), timeCellColor(c));
     }
     await showFrame(45);
   }
@@ -652,17 +635,16 @@ async function animTetris(oldSet, newSet){
       if(y<0){ allLanded=false; continue; }
       if(y<target) allLanded=false;
       const rr = Math.min(y,target);
-      setCell(idx(rr,col), y>=target ? colTime() : scaled(colTime(),140));
+      setCell(idx(rr,col), y>=target ? timeCellColor(cell) : scaled(timeCellColor(cell),140));
     }
     await showFrame(30);
     if(allLanded) break;
   }
 }
 async function doTransition(style, oldSet, newSet){
-  if(style===TR_RANDOM) style = rnd(TR_PAC, TR_FADE+1); // TR_PAC..TR_TETRIS
+  if(style===TR_RANDOM){ style = rnd(TR_PAC, TR_FADE); if(style>=TR_MATRIX) style++; } // Matrix slot retired
   switch(style){
     case TR_PAC:     await animPacEat(oldSet,newSet); break;
-    case TR_MATRIX:  await animMatrix(newSet,false);  break;
     case TR_CANNON:  await animCannon(oldSet,newSet); break;
     case TR_INVADER: await animInvaderZap(oldSet,newSet); break;
     case TR_TETRIS:  await animTetris(oldSet,newSet); break;
@@ -683,17 +665,17 @@ async function attractInvaders(){
     await showFrame(260);
   }
 }
+function drawGhost14(body){
+  clearFrame();
+  for(let r=0;r<14;r++) for(let c=0;c<14;c++){
+    const ch=GHOST14[r][c]; if(ch==='.') continue;
+    setCell(idx(r+1,c+1), ch==='B'?body : ch==='W'?COL_WHITE : GHOST_BLUE);
+  }
+}
 async function attractGhost(){
   const GCOL=[GHOST_RED,GHOST_PINK,GHOST_CYAN,GHOST_ORANGE];
-  async function draw(body){
-    clearFrame();
-    for(let r=0;r<14;r++) for(let c=0;c<14;c++){
-      const ch=GHOST14[r][c]; if(ch==='.') continue;
-      setCell(idx(r+1,c+1), ch==='B'?body : ch==='W'?COL_WHITE : GHOST_BLUE);
-    }
-  }
-  for(let g=0; g<4; g++){ await draw(GCOL[g]); await showFrame(900); }
-  for(let f=0; f<3; f++){ await draw(GHOST_BLUE); await showFrame(260); await draw(GHOST_FLASH); await showFrame(180); }
+  for(let g=0; g<4; g++){ drawGhost14(GCOL[g]); await showFrame(900); }
+  for(let f=0; f<3; f++){ drawGhost14(GHOST_BLUE); await showFrame(260); drawGhost14(GHOST_FLASH); await showFrame(180); }
 }
 async function attractPacChase(){
   for(let pass=0; pass<2; pass++){
@@ -888,13 +870,12 @@ async function attractQbert(){
   for(let f=0;f<6;f++) await draw(-1,0,!!(f&1),170); // changed cubes flash
 }
 async function animAttract(which){
-  if(which===AT_RANDOM || which>=AT_COUNT) which = rnd(AT_INVADERS, AT_COUNT);
+  if(which===AT_RANDOM || which>=AT_COUNT){ which = rnd(AT_INVADERS, AT_COUNT-1); if(which>=AT_MATRIX) which++; } // Matrix slot retired
   switch(which){
     case AT_INVADERS:    await attractInvaders();    break;
     case AT_GHOST:       await attractGhost();       break;
     case AT_PACCHASE:    await attractPacChase();    break;
     case AT_CANNONDUEL:  await attractCannonDuel();  break;
-    case AT_MATRIX:      { refreshTimeWords(); await animMatrix(nowCells, true); return; }
     case AT_COIN:        await attractCoin();        break;
     case AT_ASTEROIDS:   await attractAsteroids();   break;
     case AT_GALAGA:      await attractGalaga();      break;
@@ -909,7 +890,7 @@ async function animHiddenWord(which){
   const wc = HIDDEN[which].color;
   for(let t=0; t<56; t++){
     clearFrame();
-    fillCells(nowCells, colTime());
+    fillTime(nowCells);
     fillCells(word, scaled(wc, sin8(t*9)));
     await showFrame(45);
   }
@@ -921,7 +902,9 @@ async function animBoot(){
     for(let s=10; s>0; s--){ clearFrame(); fillCells(coin, scaled(colAccent(), s*25)); await showFrame(30); }
   }
   refreshTimeWords();
-  await animMatrix(nowCells, false);
+  drawGhost14(GHOST_RED); await showFrame(1000);          // a ghost haunts the boot
+  for(let f=0; f<2; f++){ drawGhost14(GHOST_BLUE); await showFrame(280); drawGhost14(GHOST_FLASH); await showFrame(200); }
+  await animFade(new Set(), nowCells);
 }
 async function animMapTest(){
   for(let f=0; f<4; f++){
@@ -970,7 +953,7 @@ function drawAmbient(){
 }
 function renderBase(){
   clearFrame();
-  fillCells(nowCells, colTime());
+  fillTime(nowCells);
   drawAmbient();
 }
 
@@ -1031,7 +1014,7 @@ async function tick(){
    ===================================================================== */
 const THEMES=[["Arcade","#ffffff","#ffb300"],["Matrix","#6fff7d","#2e9440"],
 ["Amber CRT","#ffb300","#ff8c3b"],["Ice","#9fd8ff","#4dd9ff"],
-["Rainbow",null,null],["Custom",null,null]];
+["Rainbow",null,null],["Custom",null,null],["Party",null,null]];
 const $=id=>document.getElementById(id);
 
 function bindRange(id,key,lab){ const el=$(id); el.addEventListener('input',()=>{ if(lab) $(lab).textContent=el.value; cfg[key]=+el.value; }); }
