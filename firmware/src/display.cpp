@@ -21,6 +21,17 @@ static CRGB fromU32(uint32_t v) { return CRGB((v >> 16) & 0xFF, (v >> 8) & 0xFF,
 CRGB colTime()   { return fromU32(cfg.timeColor); }
 CRGB colAccent() { return fromU32(cfg.accentColor); }
 
+// Party theme: every lit letter gets its own colour — golden-angle hue step
+// per cell so neighbours contrast, drifting slowly. Use instead of colTime()
+// wherever the painted cell is known.
+CRGB timeCellColor(uint16_t cell) {
+    if (cfg.theme == THEME_PARTY) return CRGB(CHSV((uint8_t)(cell * 97 + millis() / 40), 255, 255));
+    return colTime();
+}
+void fillTime(const CellSet& s) {
+    for (uint8_t k = 0; k < s.n; k++) setCell(s.idx[k], timeCellColor(s.idx[k]));
+}
+
 // ---------- mapping ----------
 uint16_t cellToLed(uint16_t cell) {
     uint8_t r = cell / GRID_N, c = cell % GRID_N;
@@ -139,7 +150,7 @@ static void drawAmbient() {
 // ---------- base clock frame ----------
 static void renderBase() {
     clearFrame();
-    if (timeValid()) fillCells(nowCells, colTime());
+    if (timeValid()) fillTime(nowCells);
     else { CellSet coin; hiddenCells(0, coin); fillCells(coin, colAccent()); } // "please set time"
     drawAmbient();
 }
@@ -179,10 +190,12 @@ void engineSetup() {
 }
 
 static void doTransition(uint8_t style, const CellSet& oldSet, const CellSet& newSet) {
-    if (style == TR_RANDOM) style = random(TR_PAC, TR_FADE);  // pac..tetris
+    if (style == TR_RANDOM) {                                 // pac..tetris (Matrix slot retired)
+        style = random(TR_PAC, TR_FADE - 1);
+        if (style >= TR_MATRIX) style++;
+    }
     switch (style) {
         case TR_PAC:     animPacEat(oldSet, newSet);   break;
-        case TR_MATRIX:  animMatrix(newSet, false);    break;
         case TR_CANNON:  animCannon(oldSet, newSet);   break;
         case TR_INVADER: animInvaderZap(oldSet, newSet); break;
         case TR_TETRIS:  animTetris(oldSet, newSet);   break;

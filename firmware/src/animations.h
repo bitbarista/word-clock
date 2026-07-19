@@ -4,7 +4,6 @@
 // time-change transitions (blocking; async web server keeps running)
 void animFade(const CellSet& oldSet, const CellSet& newSet);
 void animPacEat(const CellSet& oldSet, const CellSet& newSet);
-void animMatrix(const CellSet& newSet, bool longIntro);
 void animCannon(const CellSet& oldSet, const CellSet& newSet);
 void animInvaderZap(const CellSet& oldSet, const CellSet& newSet);
 void animTetris(const CellSet& oldSet, const CellSet& newSet);

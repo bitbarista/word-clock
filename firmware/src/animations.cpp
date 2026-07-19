@@ -29,10 +29,6 @@ static const char* const ROCK_SMALL[3]  = { ".X.", "XXX", ".X." };
 static const char* const BEE_SPR[4]     = { "..X..", ".XXX.", "XXXXX", "X.X.X" };
 static const char* const DK_SPR[4]      = { "XX.XX", "XXXXX", ".XXX.", "X.X.X" };
 
-static const CRGB MATRIX_HEAD(0xD9, 0xFF, 0xDC);
-static const CRGB MATRIX_G1(0x4B, 0xE1, 0x5F);
-static const CRGB MATRIX_G2(0x2E, 0x94, 0x40);
-static const CRGB MATRIX_G3(0x1C, 0x5C, 0x2A);
 static const CRGB PAC_YELLOW(0xFF, 0xD9, 0x3B);
 static const CRGB GHOST_RED(0xFF, 0x4D, 0x4D);
 static const CRGB GHOST_CYAN(0x4D, 0xD9, 0xFF);
@@ -57,10 +53,10 @@ void animFade(const CellSet& oldSet, const CellSet& newSet) {
         uint8_t up = step * 16, down = 255 - up;
         clearFrame();
         for (uint8_t k = 0; k < oldSet.n; k++)
-            if (!newSet.has(oldSet.idx[k])) setCell(oldSet.idx[k], scaled(colTime(), down));
+            if (!newSet.has(oldSet.idx[k])) setCell(oldSet.idx[k], scaled(timeCellColor(oldSet.idx[k]), down));
         for (uint8_t k = 0; k < newSet.n; k++)
-            setCell(newSet.idx[k], oldSet.has(newSet.idx[k]) ? colTime()
-                                                             : scaled(colTime(), up));
+            setCell(newSet.idx[k], oldSet.has(newSet.idx[k]) ? timeCellColor(newSet.idx[k])
+                                                             : scaled(timeCellColor(newSet.idx[k]), up));
         showFrame(35);
     }
 }
@@ -83,7 +79,7 @@ void animPacEat(const CellSet& oldSet, const CellSet& newSet) {
         if (i < pn) eaten[path[i]] = true;
         clearFrame();
         for (uint8_t k = 0; k < oldSet.n; k++)
-            if (!eaten[oldSet.idx[k]]) setCell(oldSet.idx[k], colTime());
+            if (!eaten[oldSet.idx[k]]) setCell(oldSet.idx[k], timeCellColor(oldSet.idx[k]));
         if (i >= 7 && i - 7 < pn) setCell(path[i - 7], GHOST_RED);
         if (i < pn) setCell(path[i], PAC_YELLOW);
         showFrame(28);
@@ -92,42 +88,8 @@ void animPacEat(const CellSet& oldSet, const CellSet& newSet) {
     showFrame(250);
     for (uint8_t step = 0; step <= 12; step++) {
         clearFrame();
-        for (uint8_t k = 0; k < newSet.n; k++) setCell(newSet.idx[k], scaled(colTime(), step * 21));
+        for (uint8_t k = 0; k < newSet.n; k++) setCell(newSet.idx[k], scaled(timeCellColor(newSet.idx[k]), step * 21));
         showFrame(35);
-    }
-}
-
-void animMatrix(const CellSet& newSet, bool longIntro) {
-    struct Drop { float y, v; uint8_t len; };
-    Drop d[GRID_N];
-    for (uint8_t c = 0; c < GRID_N; c++)
-        d[c] = { -(float)random(0, 18), 0.35f + random(0, 75) / 100.0f, (uint8_t)random(4, 8) };
-    uint32_t until = millis() + (longIntro ? 6000 : 3200);
-    while (millis() < until) {
-        clearFrame();
-        for (uint8_t c = 0; c < GRID_N; c++) {
-            d[c].y += d[c].v;
-            int head = (int)d[c].y;
-            for (uint8_t k = 0; k < d[c].len; k++) {
-                int r = head - k;
-                if (r >= 0 && r < GRID_N)
-                    setCell(r * GRID_N + c, k == 0 ? MATRIX_HEAD : k < 2 ? MATRIX_G1
-                                          : k < 4 ? MATRIX_G2 : MATRIX_G3);
-            }
-            if (head - d[c].len > GRID_N)
-                d[c] = { -(float)random(0, 10), 0.35f + random(0, 75) / 100.0f, (uint8_t)random(4, 8) };
-        }
-        showFrame(45);
-    }
-    // rain resolves into the time
-    clearFrame();
-    fillCells(newSet, MATRIX_G1);
-    showFrame(600);
-    for (uint8_t step = 0; step <= 12; step++) {
-        CRGB c = blend(MATRIX_G1, colTime(), step * 21);
-        clearFrame();
-        fillCells(newSet, c);
-        showFrame(40);
     }
 }
 
@@ -142,7 +104,7 @@ void animCannon(const CellSet& oldSet, const CellSet& newSet) {
     int cannonC = 8;
     auto drawScene = [&](int shotR, int shotC) {
         clearFrame();
-        for (uint8_t k = 0; k < oldSet.n; k++) if (remain[oldSet.idx[k]]) setCell(oldSet.idx[k], colTime());
+        for (uint8_t k = 0; k < oldSet.n; k++) if (remain[oldSet.idx[k]]) setCell(oldSet.idx[k], timeCellColor(oldSet.idx[k]));
         drawSprite(CANNON, 7, 4, 12, cannonC - 3, SI_GREEN);
         if (shotR >= 0) setCell(shotR * GRID_N + shotC, colAccent());
         showFrame(26);
@@ -167,7 +129,7 @@ void animInvaderZap(const CellSet& oldSet, const CellSet& newSet) {
         if (step == 8 || step == 16) iy++;
         const char* const* frm = (step & 1) ? INVADER_B : INVADER_A;
         clearFrame();
-        for (uint8_t k = 0; k < oldSet.n; k++) if (remain[oldSet.idx[k]]) setCell(oldSet.idx[k], colTime());
+        for (uint8_t k = 0; k < oldSet.n; k++) if (remain[oldSet.idx[k]]) setCell(oldSet.idx[k], timeCellColor(oldSet.idx[k]));
         drawSprite(frm, 11, 8, iy, ix, SI_GREEN);
         showFrame(220);
         if (step % 2 == 0) {           // fire straight down from a random gun column
@@ -189,7 +151,7 @@ void animTetris(const CellSet& oldSet, const CellSet& newSet) {
         clearFrame();
         for (uint8_t k = 0; k < oldSet.n; k++) {
             uint8_t r = oldSet.idx[k] / GRID_N + shift;
-            if (r < GRID_N) setCell(r * GRID_N + oldSet.idx[k] % GRID_N, colTime());
+            if (r < GRID_N) setCell(r * GRID_N + oldSet.idx[k] % GRID_N, timeCellColor(oldSet.idx[k]));
         }
         showFrame(45);
     }
@@ -205,7 +167,8 @@ void animTetris(const CellSet& oldSet, const CellSet& newSet) {
             if (y < target) allLanded = false;
             int rr = min(y, target);
             setCell(rr * GRID_N + newSet.idx[k] % GRID_N,
-                    (y >= target) ? colTime() : scaled(colTime(), 140));
+                    (y >= target) ? timeCellColor(newSet.idx[k])
+                                  : scaled(timeCellColor(newSet.idx[k]), 140));
         }
         showFrame(30);
         if (allLanded) break;
@@ -224,22 +187,23 @@ static void attractInvaders() {
     }
 }
 
+static void drawGhost14(const CRGB& body) {
+    clearFrame();
+    for (uint8_t r = 0; r < 14; r++)
+        for (uint8_t c = 0; c < 14; c++) {
+            char ch = GHOST14[r][c];
+            if (ch == '.') continue;
+            CRGB col = (ch == 'B') ? body : (ch == 'W') ? CRGB::White : CRGB(0x3B, 0x5B, 0xFF);
+            setCell((r + 1) * GRID_N + c + 1, col);
+        }
+}
+
 static void attractGhost() {
     static const CRGB GCOL[4] = { GHOST_RED, CRGB(0xFF, 0xB8, 0xDE), GHOST_CYAN, CRGB(0xFF, 0xB8, 0x47) };
-    auto draw = [&](const CRGB& body) {
-        clearFrame();
-        for (uint8_t r = 0; r < 14; r++)
-            for (uint8_t c = 0; c < 14; c++) {
-                char ch = GHOST14[r][c];
-                if (ch == '.') continue;
-                CRGB col = (ch == 'B') ? body : (ch == 'W') ? CRGB::White : CRGB(0x3B, 0x5B, 0xFF);
-                setCell((r + 1) * GRID_N + c + 1, col);
-            }
-    };
-    for (uint8_t g = 0; g < 4; g++) { draw(GCOL[g]); showFrame(900); }
+    for (uint8_t g = 0; g < 4; g++) { drawGhost14(GCOL[g]); showFrame(900); }
     for (uint8_t f = 0; f < 3; f++) {                 // frightened flash
-        draw(CRGB(0x3B, 0x5B, 0xFF)); showFrame(260);
-        draw(CRGB(0xE8, 0xEC, 0xFF)); showFrame(180);
+        drawGhost14(CRGB(0x3B, 0x5B, 0xFF)); showFrame(260);
+        drawGhost14(CRGB(0xE8, 0xEC, 0xFF)); showFrame(180);
     }
 }
 
@@ -471,13 +435,15 @@ static void attractQbert() {
 }
 
 void animAttract(uint8_t which) {
-    if (which == AT_RANDOM || which >= AT_COUNT) which = random(AT_INVADERS, AT_COUNT);
+    if (which == AT_RANDOM || which >= AT_COUNT) {          // Matrix slot retired
+        which = random(AT_INVADERS, AT_COUNT - 1);
+        if (which >= AT_MATRIX) which++;
+    }
     switch (which) {
         case AT_INVADERS:   attractInvaders();   break;
         case AT_GHOST:      attractGhost();      break;
         case AT_PACCHASE:   attractPacChase();   break;
         case AT_CANNONDUEL: attractCannonDuel(); break;
-        case AT_MATRIX:   { CellSet now; getNowCells(now); animMatrix(now, true); return; }
         case AT_COIN:       attractCoin();       break;
         case AT_ASTEROIDS:   attractAsteroids();  break;
         case AT_GALAGA:      attractGalaga();     break;
@@ -496,7 +462,7 @@ void animHiddenWord(uint8_t which) {
     CRGB wc((HIDDEN[which].color >> 16) & 0xFF, (HIDDEN[which].color >> 8) & 0xFF, HIDDEN[which].color & 0xFF);
     for (uint8_t t = 0; t < 56; t++) {
         clearFrame();
-        fillCells(now, colTime());
+        fillTime(now);
         fillCells(word, scaled(wc, sin8(t * 9)));
         showFrame(45);
     }
@@ -508,7 +474,15 @@ void animBoot() {
         for (uint8_t s = 0; s <= 10; s++) { clearFrame(); fillCells(coin, scaled(colAccent(), s * 25)); showFrame(30); }
         for (uint8_t s = 10; s > 0; s--)  { clearFrame(); fillCells(coin, scaled(colAccent(), s * 25)); showFrame(30); }
     }
-    if (timeValid()) { CellSet now; getNowCells(now); animMatrix(now, false); }
+    if (timeValid()) {                                      // a ghost haunts the boot
+        drawGhost14(GHOST_RED); showFrame(1000);
+        for (uint8_t f = 0; f < 2; f++) {
+            drawGhost14(CRGB(0x3B, 0x5B, 0xFF)); showFrame(280);
+            drawGhost14(CRGB(0xE8, 0xEC, 0xFF)); showFrame(200);
+        }
+        CellSet now; getNowCells(now);
+        animFade(CellSet(), now);
+    }
 }
 
 void animMapTest() {

@@ -18,6 +18,7 @@ void configLoad() {
     cfg.accentColor    = prefs.getULong ("aCol",  cfg.accentColor);
     cfg.animsEnabled   = prefs.getBool  ("aEn",   cfg.animsEnabled);
     cfg.transStyle     = prefs.getUChar ("trS",   cfg.transStyle);
+    if (cfg.transStyle == TR_MATRIX) cfg.transStyle = TR_RANDOM;   // Matrix rain retired
     cfg.attractEnabled = prefs.getBool  ("atEn",  cfg.attractEnabled);
     cfg.attractMin     = prefs.getUShort("atMin", cfg.attractMin);
     cfg.wordsEnabled   = prefs.getBool  ("wEn",   cfg.wordsEnabled);

@@ -25,6 +25,8 @@ extern volatile int8_t  reqParam;
 // ---- shared helpers for animations.cpp ----
 CRGB colTime();
 CRGB colAccent();
+CRGB timeCellColor(uint16_t cell);   // per-letter colour (Party theme aware)
+void fillTime(const CellSet& s);     // paint a set with timeCellColor()
 void clearFrame();
 void setCell(uint16_t cell, const CRGB& c);
 void fillCells(const CellSet& s, const CRGB& c);

@@ -96,7 +96,7 @@ font-size:13px;text-align:center;padding:8px 14px}
   <div class="row"><label>Time-change style</label>
     <select id="transStyle">
       <option value="0">Random</option><option value="1">Pac-Man eats it</option>
-      <option value="2">Matrix rain</option><option value="3">Cannon shoot-up</option>
+      <option value="3">Cannon shoot-up</option>
       <option value="4">Invader zap</option><option value="5">Tetris drop</option>
       <option value="6">Gentle fade</option>
     </select></div>
@@ -110,8 +110,11 @@ font-size:13px;text-align:center;padding:8px 14px}
     <button onclick="act('attract',2)">&#9608; Ghosts</button>
     <button onclick="act('attract',3)">&#9608; Pac chase</button>
     <button onclick="act('attract',4)">&#9608; Cannon duel</button>
-    <button onclick="act('attract',5)">&#9608; Matrix</button>
     <button onclick="act('attract',6)">&#9608; Insert coin</button>
+    <button onclick="act('attract',7)">&#9608; Asteroids</button>
+    <button onclick="act('attract',8)">&#9608; Galaga</button>
+    <button onclick="act('attract',9)">&#9608; Donkey Kong</button>
+    <button onclick="act('attract',10)">&#9608; Q*bert</button>
     <button class="acc" onclick="act('transition',-1)">&#9654; Play transition</button>
   </div>
 </div>
@@ -197,7 +200,8 @@ const GRID=["ITKISAHIGHSCOREZ","TWENTYINSERTCOIN","FOURTEENSIXTEENA","SEVENTEENT
 "MINUTESXPASTOPOW","TWONETHREEIGHTGO","SEVENINEFOURFIVE","SIXTENELEVENGAME",
 "TWELVEOCLOCKOVER","SPACEINVADERSPEW","GALAGADONKEYKONG","ASTEROIDSQBERTUP"];
 const THEMES=[["Arcade","#ffffff","#ffb300"],["Matrix","#6fff7d","#2e9440"],
-["Amber CRT","#ffb300","#ff8c3b"],["Ice","#9fd8ff","#4dd9ff"],["Custom",null,null]];
+["Amber CRT","#ffb300","#ff8c3b"],["Ice","#9fd8ff","#4dd9ff"],["Custom",null,null],
+["Party",null,null]];
 const $=id=>document.getElementById(id);
 let cfg={},debTimer;
 

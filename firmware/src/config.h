@@ -8,6 +8,10 @@ enum TransStyle : uint8_t {
     TR_COUNT
 };
 
+enum Theme : uint8_t {
+    THEME_ARCADE = 0, THEME_MATRIX, THEME_AMBER, THEME_ICE, THEME_CUSTOM, THEME_PARTY
+};
+
 enum AttractAnim : uint8_t {
     AT_RANDOM = 0, AT_INVADERS, AT_GHOST, AT_PACCHASE, AT_CANNONDUEL, AT_MATRIX, AT_COIN,
     AT_ASTEROIDS, AT_GALAGA, AT_DONKEYKONG, AT_QBERT,
@@ -25,7 +29,7 @@ struct Config {
     uint16_t usbSafeMa   = 400;    // budget clamp while a USB host is on the
                                     // programming port — see usbguard.h for why
     // theme / colours
-    uint8_t  theme       = 0;      // 0 arcade 1 matrix 2 amber 3 ice 4 custom
+    uint8_t  theme       = 0;      // Theme enum: arcade..custom, party = per-letter colours
     uint32_t timeColor   = 0xFFFFFF;
     uint32_t accentColor = 0xFFB300;
     // animations
