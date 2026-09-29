@@ -345,7 +345,7 @@ const GRID = [
   "TWELVEOCLOCKOVER","SPACEINVADERSPEW","GALAGADONKEYKONG","ASTEROIDSQBERTUP"
 ];
 const idx = (r,c)=> r*GRID_N+c;
-const W_IT=[0,0,2], W_IS=[0,3,2], W_A=[0,5,1];
+const W_IT=[0,0,2], W_IS=[0,3,2];
 const W_MINUTE=[8,0,6], W_MINUTES=[8,0,7], W_PAST=[8,8,4], W_TO=[8,11,2], W_OCLOCK=[12,6,6], W_M30=[7,9,4];
 const W_MIN = [null,
   [7,2,3],[7,0,3],[6,0,5],[2,0,4],[7,5,4],[2,8,3],[3,0,5],[4,0,5],[4,8,4],[6,10,3],
@@ -366,7 +366,7 @@ function timeCells(hour24, minute){
   if(minute===0){ addWord(W_HOUR[h],set,phraseParts); addWord(W_OCLOCK,set,phraseParts);
     return {cells:set, phrase:phraseParts.join(' ')}; }
   const past = minute<=30, mm = past ? minute : 60-minute;
-  if(mm===15){ addWord(W_A,set,phraseParts); addWord(W_MIN[15],set,phraseParts); }
+  if(mm===15){ addWord(W_MIN[15],set,phraseParts); }   // no "A": it abuts IS on row 0
   else if(mm===30){ addWord(W_M30,set,phraseParts); }
   else if(mm===20){ addWord(W_MIN[20],set,phraseParts); addWord(W_MINUTES,set,phraseParts); }
   else if(mm>20){ addWord(W_MIN[20],set,phraseParts); addWord(W_MIN[mm-20],set,phraseParts); addWord(W_MINUTES,set,phraseParts); }
