@@ -172,8 +172,9 @@ Per-minute wording fits 16×16 through letter-sharing: FOURTEEN,
 SIXTEEN, SEVENTEEN, EIGHTEEN, NINETEEN carry FOUR, SIX, SEVEN, EIGHT,
 NINE as prefixes; TWONE = TWO+ONE, THREELEVEN = THREE+ELEVEN,
 THREEIGHT = THREE+EIGHT, SEVENINE = SEVEN+NINE, PASTO = PAST+TO, and
-MINUTE is a prefix of MINUTES. Grammar: `ONE MINUTE`, `A QUARTER` /
-`HALF` (no MINUTES), 21–29 = TWENTY + unit, and past 30 minutes it
+MINUTE is a prefix of MINUTES. Grammar: `ONE MINUTE`, `QUARTER` /
+`HALF` (no MINUTES; the row-0 A stays dark: it abuts IS and read
+as "ISA"), 21–29 = TWENTY + unit, and past 30 minutes it
 counts down TO the next hour. The X in row 8 is a deliberate spacer:
 MINUTES PAST is lit 48 minutes of every hour, so it earns a gap
 (TWELVE OCLOCK stays adjacent — it shows for one minute twice a day). The stand's front lip is deliberately

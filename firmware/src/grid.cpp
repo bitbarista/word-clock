@@ -22,7 +22,6 @@ const char* const LETTERS[GRID_N] = {
 // -------- time words (letter-sharing layout, see README) --------
 static const WordRef W_IT     = {0, 0, 2};
 static const WordRef W_IS     = {0, 3, 2};
-static const WordRef W_A      = {0, 5, 1};
 static const WordRef W_MINUTE = {8, 0, 6};   // prefix of MINUTES
 static const WordRef W_MINUTES= {8, 0, 7};
 static const WordRef W_PAST   = {8, 8, 4};
@@ -98,7 +97,7 @@ void timeCells(int hour24, int minute, CellSet& out, String* phrase) {
     bool past = minute <= 30;
     int  mm   = past ? minute : 60 - minute;
 
-    if (mm == 15) { addWord(W_A, out, phrase); addWord(W_MIN[15], out, phrase); }
+    if (mm == 15) { addWord(W_MIN[15], out, phrase); }   // no "A": it abuts IS on row 0
     else if (mm == 30) { addWord(W_M30, out, phrase); }
     else if (mm == 20) { addWord(W_MIN[20], out, phrase); addWord(W_MINUTES, out, phrase); }
     else if (mm > 20)  { addWord(W_MIN[20], out, phrase);
