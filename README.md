@@ -125,8 +125,8 @@ POWER
   the XIAO even during WiFi TX current spikes.
 
 
-  ESP32-S3's OWN programming USB-C (internal cradle, bench-flash only
-  pre-assembly -- OTA thereafter)
+  ESP32-S3's OWN programming USB-C (internal cradle -- the only
+  proven way to flash; web OTA is unproven, see Assemble it)
 
     USB-C connector
      VBUS ----------[ onboard Schottky ]---------------------- 5V RAIL
@@ -169,8 +169,13 @@ onboard diode (current-limited in firmware when this happens).
 
 ## Assemble it
 
-1. **Flash the ESP32 first** — over USB on the bench; after assembly
-   it updates OTA (there's no external port on the finished clock).
+1. **Flash the ESP32 first** — over USB on the bench. The firmware has
+   a web OTA endpoint, but it is **unproven**: its only real-world use
+   sent a build that turned out to be broken, so OTA itself was never
+   confirmed working. There's no external port on the finished clock,
+   so recovering from a bad update means opening the case to reach the
+   ESP32's USB-C. Until OTA is proven on a bench unit, plan to update
+   over USB with the case open.
 2. Faceplate letters-down on the desk → diffuser sheet into the
    opening → lattice on top of it → panel, **wire-exit edge toward the
    bottom** (shortest runs to the ESP32 and socket; firmware's mapping
