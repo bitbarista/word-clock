@@ -236,5 +236,4 @@ TWO+ONE, PASTO = PAST+TO, …) — the full construction is in
   the enclosure concepts considered (arcade cabinet vs. subtle wedge);
   both demo pages are archived in [`docs/`](docs/) and mirrored to
   [word-clock-demo](https://github.com/bitbarista/word-clock-demo) for
-  GitHub Pages hosting (this repo stays private; only those two static
-  pages are public).
+  GitHub Pages hosting.
