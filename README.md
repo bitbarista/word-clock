@@ -34,10 +34,12 @@ not started.**
 
 ### Power & access
 
-The ESP32 sits in a corner cradle with its **onboard USB-C protruding
-through the side wall** (right side viewed from the front; `usb_side`
-flips it) — flash/update firmware without opening the case, and one
-USB-C lead powers everything.
+The ESP32 sits on an internal locator, so its **onboard USB-C is only
+reachable with the case open**; one USB-C lead into the rear power pod
+powers everything. Flash over that onboard USB-C on the bench. Web OTA
+exists but is **unproven**: its only real-world use sent a build that
+turned out to be broken, so plan to update over USB with the case open
+until OTA has been confirmed on a bench unit.
 
 ### Power budget & protection
 
@@ -234,7 +236,8 @@ Features (all from the mobile web UI):
 - **Panel mapping** (rotate/serpentine/mirror) with an on-LED
   orientation test — no reflashing to fix a differently-wired panel.
 - Live 16×16 preview of the actual frame in the web UI.
-- Web OTA, mDNS, captive AP setup, settings persisted in NVS.
+- Web OTA (unproven — see Power & access), mDNS, captive AP setup,
+  settings persisted in NVS.
 
 The interactive artifact (link at the top) is the behavioural spec —
 grid, word logic and animations match it. MQTT/Home Assistant
