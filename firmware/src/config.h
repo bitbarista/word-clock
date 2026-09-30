@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define FW_VERSION "0.4.5"
+#define FW_VERSION "0.4.6"
 
 enum TransStyle : uint8_t {
     TR_RANDOM = 0, TR_PAC, TR_MATRIX, TR_CANNON, TR_INVADER, TR_TETRIS, TR_FADE,

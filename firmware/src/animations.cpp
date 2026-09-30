@@ -50,7 +50,7 @@ static void setRC(int r, int c, const CRGB& col) {
 // ================= transitions =================
 void animFade(const CellSet& oldSet, const CellSet& newSet) {
     for (uint8_t step = 0; step <= 16; step++) {
-        uint8_t up = step * 16, down = 255 - up;
+        uint8_t up = step >= 16 ? 255 : step * 16, down = 255 - up;   // 16*16 would wrap to 0
         clearFrame();
         for (uint8_t k = 0; k < oldSet.n; k++)
             if (!newSet.has(oldSet.idx[k])) setCell(oldSet.idx[k], scaled(timeCellColor(oldSet.idx[k]), down));
