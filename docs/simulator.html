@@ -1013,6 +1013,13 @@ async function tick(){
     else if(rq==='words'){ await animHiddenWord(param<0?rnd(0,HIDDEN.length):param); }
     else if(rq==='maptest'){ await animMapTest(); }
     else if(rq==='identify'){ await animIdentify(); }
+    else if(rq==='boot'){
+      // like a real reboot: fresh timers, and the current minute counts as already shown
+      nextAttractAt = performance.now() + cfg.attractMin*60000;
+      nextWordsAt   = performance.now() + cfg.wordsMin*60000;
+      await animBoot();
+      const d=simNow(); lastMin=d.getMinutes(); lastHour=d.getHours();
+    }
     busy=false;
     setTimeout(tick,16); return;
   }
@@ -1133,10 +1140,8 @@ function doOta(){
       await restartClock(); }
   }, 90);
 }
-async function restartClock(){
-  lastMin=-1; nextAttractAt=0; nextWordsAt=0;
-  if(!busy){ busy=true; await animBoot(); busy=false; }
-}
+// queued through tick() like any request, so the boot never draws over the running loop
+function restartClock(){ act('boot'); }
 
 // -- live preview + status, mirrors /api/preview and /api/status polling --
 const cv=$('cv'), ctx=cv.getContext('2d');
