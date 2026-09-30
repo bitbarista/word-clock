@@ -7,6 +7,9 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>TIME INVADERS</title>
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
 :root{--bg:#0d0f14;--card:#161a22;--line:#262c38;--ink:#e8ecf4;--mut:#8b93a5;
 --amber:#ffb300;--green:#4be15f;--red:#ff4d4d;--cyan:#4dd9ff;--r:14px}

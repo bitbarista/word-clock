@@ -3,6 +3,7 @@
 #include "display.h"
 #include "network.h"
 #include "webui.h"
+#include "icons.h"
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
@@ -129,6 +130,19 @@ void webSetup() {
     server.on("/", HTTP_GET, [](AsyncWebServerRequest* req) {
         req->send(200, "text/html", INDEX_HTML);
     });
+
+    // browser/home-screen icons; cached for a week so they aren't refetched per page
+    auto icon = [](const char* path, const uint8_t* data, size_t len) {
+        server.on(path, HTTP_GET, [data, len](AsyncWebServerRequest* req) {
+            AsyncWebServerResponse* r = req->beginResponse(200, "image/png", data, len);
+            r->addHeader("Cache-Control", "max-age=604800");
+            req->send(r);
+        });
+    };
+    icon("/favicon.ico",          ICON_32,  sizeof(ICON_32));    // browsers ask for this by default
+    icon("/favicon-16.png",       ICON_16,  sizeof(ICON_16));
+    icon("/favicon-32.png",       ICON_32,  sizeof(ICON_32));
+    icon("/apple-touch-icon.png", ICON_180, sizeof(ICON_180));
 
     server.on("/api/status", HTTP_GET, handleStatus);
     server.on("/api/config", HTTP_GET, handleGetConfig);
