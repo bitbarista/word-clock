@@ -593,16 +593,14 @@ async function animCannon(oldSet, newSet){
   await animFade(new Set(), newSet);
 }
 async function animInvaderZap(oldSet, newSet){
-  // old time dims to a backdrop; each bomb is a short falling shot that knocks out the first letter it hits
-  const DIM=80;
-  const remain = new Set(oldSet);
-  for(let s=1; s<=6; s++){
+  // clear stage: old time fades out, invader crosses an empty screen dropping bombs, new time fades in
+  for(let s=1; s<=8; s++){
     clearFrame();
-    const lvl = 255 - Math.floor((255-DIM)*s/6);
+    const lvl = 255 - Math.floor(255*s/8);
     for(const c of oldSet) setCell(c, scaled(timeCellColor(c), lvl));
     await showFrame(35);
   }
-  let ix=-2, iy=0, bombR=-1, bombC=0, flash=-1;
+  let ix=-2, iy=0, bombR=-1, bombC=0;
   for(let step=0; step<22; step++){
     ix = (step<8) ? ix+1 : (step<16 ? ix-1 : ix+1);
     if(step===8 || step===16) iy++;
@@ -613,27 +611,15 @@ async function animInvaderZap(oldSet, newSet){
     }
     for(let sub=0; sub<4; sub++){
       clearFrame();
-      for(const c of oldSet) if(remain.has(c)) setCell(c, scaled(timeCellColor(c), DIM));
-      if(flash>=0){ setCell(flash, COL_WHITE); flash=-1; }
       drawSprite(frm,11,8,iy,ix,SI_GREEN);
       if(bombR>=GRID_N) bombR=-1;
       if(bombR>=0){
-        const cell = idx(bombR,bombC);
-        if(remain.has(cell)){ remain.delete(cell); setCell(cell, COL_WHITE); flash=cell; bombR=-1; }
-        else {
-          setCell(cell, colAccent());
-          if(bombR>iy+8) setCell(cell-GRID_N, scaled(colAccent(),70));
-          bombR++;
-        }
+        setCell(idx(bombR,bombC), colAccent());
+        if(bombR>iy+8) setCell(idx(bombR-1,bombC), scaled(colAccent(),70));
+        bombR++;
       }
       await showFrame(55);
     }
-  }
-  for(let s=1; s<=6; s++){
-    clearFrame();
-    const lvl = DIM - Math.floor(DIM*s/6);
-    for(const c of oldSet) if(remain.has(c)) setCell(c, scaled(timeCellColor(c), lvl));
-    await showFrame(35);
   }
   await animFade(new Set(), newSet);
 }
