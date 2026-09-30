@@ -906,15 +906,30 @@ async function animHiddenWord(which){
     await showFrame(45);
   }
 }
-async function animBoot(){
-  const coin = hiddenCells(0);
-  for(let f=0; f<2; f++){
-    for(let s=0; s<=10; s++){ clearFrame(); fillCells(coin, scaled(colAccent(), s*25)); await showFrame(30); }
-    for(let s=10; s>0; s--){ clearFrame(); fillCells(coin, scaled(colAccent(), s*25)); await showFrame(30); }
+// boot logo: the favicon ghost filling the panel; clock-face eyes sweep, then settle (mirrors animations.cpp)
+const LOGO16=["................",".....BBBBBB.....","...BBBBBBBBBB...","..BHBBBBBBBBBB..",
+  "..BWWWWBBWWWWB..",".BBWWWWBBWWWWBB.",".BBWWWWBBWWWWBB.",".BBWWWWBBWWWWBB.",
+  ".BBBBBBBBBBBBBB.",".BBBBBBBBBBBBBB.",".BBBBBBBBBBBBBB.",".BBBBBBBBBBBBBB.",
+  ".BBBBBBBBBBBBBB.",".BBBBBBBBBBBBBB.",".BB.BBB..BBB.BB.","................"];
+const LOGO_EYE_R=4, LOGO_EYE_C=[3,9];
+const LOGO_V=[[1,0],[1,3],[2,1],[2,2]];
+const LOGO_RIM=[[0,1],[0,2],[1,3],[2,3],[3,2],[3,1],[2,0],[1,0]];
+const LOGO_HUB=[[1,1],[1,2],[1,2],[2,2],[2,2],[2,1],[2,1],[1,1]];
+function drawLogo(lvl, hands){
+  clearFrame();
+  for(let r=0;r<GRID_N;r++) for(let c=0;c<GRID_N;c++){
+    const ch=LOGO16[r][c]; if(ch==='.') continue;
+    setCell(idx(r,c), scaled(ch==='B'?'#03ddf7':ch==='H'?'#8aeefb':'#faf9fb', lvl));
   }
+  for(const ec of LOGO_EYE_C) for(const [hr,hc] of hands) setCell(idx(LOGO_EYE_R+hr, ec+hc), scaled('#fbc60a', lvl));
+}
+async function animBoot(){
   refreshTimeWords();
-  drawGhost14(GHOST_RED); await showFrame(1000);          // a ghost haunts the boot
-  for(let f=0; f<2; f++){ drawGhost14(GHOST_BLUE); await showFrame(280); drawGhost14(GHOST_FLASH); await showFrame(200); }
+  for(let s=1;s<=8;s++){ drawLogo(Math.floor(s*255/8), LOGO_V); await showFrame(40); }
+  await showFrame(300);
+  for(let t=0;t<16;t++){ drawLogo(255, [LOGO_HUB[t%8], LOGO_RIM[t%8]]); await showFrame(90); }
+  drawLogo(255, LOGO_V); await showFrame(800);
+  for(let s=8;s>0;s--){ drawLogo(Math.floor((s-1)*255/8), LOGO_V); await showFrame(40); }
   await animFade(new Set(), nowCells);
 }
 async function animMapTest(){
