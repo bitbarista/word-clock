@@ -235,7 +235,15 @@ void engineTick() {
         reqKind = RQ_NONE;
         CellSet cur = nowCells;
         switch (rq) {
-            case RQ_TRANSITION: refreshTimeWords(); doTransition(param < 0 ? cfg.transStyle : param, cur, nowCells); break;
+            case RQ_TRANSITION: {
+                refreshTimeWords();
+                uint8_t style = param < 0 ? cfg.transStyle : param;
+                // A preview goes from the current time to itself, so a crossfade
+                // would show nothing; fade fully out and back in instead.
+                if (style == TR_FADE) { animFade(cur, CellSet()); animFade(CellSet(), nowCells); }
+                else doTransition(style, cur, nowCells);
+                break;
+            }
             case RQ_ATTRACT:    animAttract(param < 0 ? AT_RANDOM : param); break;
             case RQ_WORDS:      animHiddenWord(param < 0 ? random(HIDDEN_COUNT) : param); break;
             case RQ_MAPTEST:    animMapTest();  break;
