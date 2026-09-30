@@ -112,6 +112,8 @@ static void pollUsbGuard() {
 // ---------- ambient pac ----------
 struct PacState {
     int8_t r = 13, c = 3;
+    int8_t tr = -1, tc = -1;         // current destination, -1 = pick one
+    uint8_t legs = 0;                // steps since the destination was picked
     int8_t histR[12], histC[12];
     uint8_t histN = 0;
     uint32_t nextStep = 0;
@@ -124,27 +126,38 @@ static void pacStep() {
     for (uint8_t k = 11; k > 0; k--) { pac.histR[k] = pac.histR[k-1]; pac.histC[k] = pac.histC[k-1]; }
     pac.histR[0] = pac.r; pac.histC[0] = pac.c;
     if (pac.histN < 12) pac.histN++;
-    // pick a neighbour, preferring unlit cells
+    // Head for a random destination anywhere on the face. A plain "avoid lit
+    // cells" walk treats the time words as walls and pools in the always-dark
+    // bottom rows. Rank moves: closer+unlit, closer+lit, away+unlit, away+lit.
+    if (pac.tr < 0 || (pac.r == pac.tr && pac.c == pac.tc) || ++pac.legs > 48) {
+        pac.tr = random(GRID_N); pac.tc = random(GRID_N); pac.legs = 0;
+    }
     static const int8_t dr[4] = {0, 0, 1, -1};
     static const int8_t dc[4] = {1, -1, 0, 0};
     uint8_t order[4] = {0, 1, 2, 3};
     for (uint8_t k = 0; k < 4; k++) { uint8_t j = random(4); uint8_t t = order[k]; order[k] = order[j]; order[j] = t; }
     int8_t bestR = pac.r, bestC = pac.c;
-    bool found = false;
+    uint8_t bestRank = 255;
+    int16_t cur = abs(pac.r - pac.tr) + abs(pac.c - pac.tc);
     for (uint8_t k = 0; k < 4; k++) {
         int8_t nr = pac.r + dr[order[k]], nc = pac.c + dc[order[k]];
         if (nr < 0 || nr >= GRID_N || nc < 0 || nc >= GRID_N) continue;
-        if (!found) { bestR = nr; bestC = nc; found = true; }
-        if (!nowCells.has(nr * GRID_N + nc)) { bestR = nr; bestC = nc; break; }
+        bool closer = abs(nr - pac.tr) + abs(nc - pac.tc) < cur;
+        uint8_t rank = (closer ? 0 : 2) + (nowCells.has(nr * GRID_N + nc) ? 1 : 0);
+        if (rank < bestRank) { bestRank = rank; bestR = nr; bestC = nc; }
     }
     pac.r = bestR; pac.c = bestC;
 }
 
+// Both pass *behind* lit time words, so the time always stays readable.
 static void drawAmbient() {
     if (!cfg.pacAmbient) return;
-    if (pac.histN >= 8)
-        setCell(pac.histR[7] * GRID_N + pac.histC[7], CRGB(180, 40, 40));   // chasing ghost
-    setCell(pac.r * GRID_N + pac.c, CRGB(200, 170, 40));                    // pac
+    if (pac.histN >= 8) {
+        uint16_t g = pac.histR[7] * GRID_N + pac.histC[7];
+        if (!nowCells.has(g)) setCell(g, CRGB(180, 40, 40));               // chasing ghost
+    }
+    uint16_t p = pac.r * GRID_N + pac.c;
+    if (!nowCells.has(p)) setCell(p, CRGB(200, 170, 40));                  // pac
 }
 
 // ---------- base clock frame ----------
