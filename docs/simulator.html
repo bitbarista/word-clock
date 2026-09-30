@@ -321,7 +321,7 @@
       attract shows are <strong>ported directly from <code>grid.cpp</code>/<code>animations.cpp</code></strong> —
       same sprites, same timings, same randomisation. The engine tick mirrors <code>display.cpp</code>:
       single-minute changes crossfade, five-minute/hour boundaries run the configured transition,
-      attract and hidden-word glints fire on their own timers, and a Pac-Man wanders the lit letters
+      attract and hidden-word glints fire on their own timers, and a Pac-Man and ghost roam the whole face, slipping behind the lit words,
       between events.</p>
     <p>What's necessarily simulated: <strong>Network, System and the panel-mapping controls</strong> have
       no real radio, flash chip or LED strip behind them, so those sections respond honestly but don't
@@ -593,25 +593,47 @@ async function animCannon(oldSet, newSet){
   await animFade(new Set(), newSet);
 }
 async function animInvaderZap(oldSet, newSet){
+  // old time dims to a backdrop; each bomb is a short falling shot that knocks out the first letter it hits
+  const DIM=80;
   const remain = new Set(oldSet);
-  let ix=-2, iy=0;
+  for(let s=1; s<=6; s++){
+    clearFrame();
+    const lvl = 255 - Math.floor((255-DIM)*s/6);
+    for(const c of oldSet) setCell(c, scaled(timeCellColor(c), lvl));
+    await showFrame(35);
+  }
+  let ix=-2, iy=0, bombR=-1, bombC=0, flash=-1;
   for(let step=0; step<22; step++){
     ix = (step<8) ? ix+1 : (step<16 ? ix-1 : ix+1);
     if(step===8 || step===16) iy++;
     const frm = (step&1) ? INVADER_B : INVADER_A;
-    clearFrame();
-    for(const c of oldSet) if(remain.has(c)) setCell(c, timeCellColor(c));
-    drawSprite(frm,11,8,iy,ix,SI_GREEN);
-    await showFrame(220);
-    if(step%2===0){
-      const gc = Math.max(0,Math.min(GRID_N-1, ix+1+rnd(0,9)));
-      for(let r=iy+8; r<GRID_N; r++){
-        const cell = idx(r,gc);
-        if(remain.has(cell)){ remain.delete(cell); setCell(cell, COL_WHITE); }
-        setCell(cell, colAccent());
-        await showFrame(22);
-      }
+    if(step%2===0 && bombR<0){
+      bombC = Math.max(0,Math.min(GRID_N-1, ix+1+rnd(0,9)));
+      bombR = iy+8;
     }
+    for(let sub=0; sub<4; sub++){
+      clearFrame();
+      for(const c of oldSet) if(remain.has(c)) setCell(c, scaled(timeCellColor(c), DIM));
+      if(flash>=0){ setCell(flash, COL_WHITE); flash=-1; }
+      drawSprite(frm,11,8,iy,ix,SI_GREEN);
+      if(bombR>=GRID_N) bombR=-1;
+      if(bombR>=0){
+        const cell = idx(bombR,bombC);
+        if(remain.has(cell)){ remain.delete(cell); setCell(cell, COL_WHITE); flash=cell; bombR=-1; }
+        else {
+          setCell(cell, colAccent());
+          if(bombR>iy+8) setCell(cell-GRID_N, scaled(colAccent(),70));
+          bombR++;
+        }
+      }
+      await showFrame(55);
+    }
+  }
+  for(let s=1; s<=6; s++){
+    clearFrame();
+    const lvl = DIM - Math.floor(DIM*s/6);
+    for(const c of oldSet) if(remain.has(c)) setCell(c, scaled(timeCellColor(c), lvl));
+    await showFrame(35);
   }
   await animFade(new Set(), newSet);
 }
@@ -928,28 +950,35 @@ async function animIdentify(){
 /* =====================================================================
    6. AMBIENT PAC + ENGINE TICK — ported from display.cpp
    ===================================================================== */
-const pac = { r:13, c:3, hist:[] };
+const pac = { r:13, c:3, tr:-1, tc:-1, legs:0, hist:[] };
 let pacNextStep = 0;
 function pacStep(){
   if(performance.now() < pacNextStep) return;
   pacNextStep = performance.now() + 350;
   pac.hist.unshift({r:pac.r,c:pac.c}); if(pac.hist.length>12) pac.hist.pop();
+  // head for a random destination; rank moves closer+unlit, closer+lit, away+unlit, away+lit
+  if(pac.tr<0 || (pac.r===pac.tr && pac.c===pac.tc) || ++pac.legs>48){
+    pac.tr=rnd(0,GRID_N); pac.tc=rnd(0,GRID_N); pac.legs=0;
+  }
   const dr=[0,0,1,-1], dc=[1,-1,0,0];
   const order=[0,1,2,3];
   for(let k=3;k>0;k--){ const j=rnd(0,k+1); [order[k],order[j]]=[order[j],order[k]]; }
-  let bestR=pac.r, bestC=pac.c, found=false;
+  let bestR=pac.r, bestC=pac.c, bestRank=99;
+  const cur=Math.abs(pac.r-pac.tr)+Math.abs(pac.c-pac.tc);
   for(const o of order){
     const nr=pac.r+dr[o], nc=pac.c+dc[o];
     if(nr<0||nr>=GRID_N||nc<0||nc>=GRID_N) continue;
-    if(!found){ bestR=nr; bestC=nc; found=true; }
-    if(!nowCells.has(idx(nr,nc))){ bestR=nr; bestC=nc; break; }
+    const closer=Math.abs(nr-pac.tr)+Math.abs(nc-pac.tc)<cur;
+    const rank=(closer?0:2)+(nowCells.has(idx(nr,nc))?1:0);
+    if(rank<bestRank){ bestRank=rank; bestR=nr; bestC=nc; }
   }
   pac.r=bestR; pac.c=bestC;
 }
 function drawAmbient(){
   if(!cfg.pacAmbient) return;
-  if(pac.hist.length>=8) setCell(idx(pac.hist[7].r,pac.hist[7].c), "#b42828");
-  setCell(idx(pac.r,pac.c), "#c8aa28");
+  // both pass behind lit time words, so the time stays readable
+  if(pac.hist.length>=8 && !nowCells.has(idx(pac.hist[7].r,pac.hist[7].c))) setCell(idx(pac.hist[7].r,pac.hist[7].c), "#b42828");
+  if(!nowCells.has(idx(pac.r,pac.c))) setCell(idx(pac.r,pac.c), "#c8aa28");
 }
 function renderBase(){
   clearFrame();
