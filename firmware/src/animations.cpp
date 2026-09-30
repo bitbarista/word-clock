@@ -121,26 +121,57 @@ void animCannon(const CellSet& oldSet, const CellSet& newSet) {
 }
 
 void animInvaderZap(const CellSet& oldSet, const CellSet& newSet) {
+    // The old time dims to a backdrop so the invader reads clearly over it;
+    // each bomb is a short falling shot that knocks out the first letter it hits.
+    const uint8_t DIM = 80;
     bool remain[NUM_CELLS] = {false};
     for (uint8_t k = 0; k < oldSet.n; k++) remain[oldSet.idx[k]] = true;
+    for (uint8_t s = 1; s <= 6; s++) {                         // ease the time down to the backdrop
+        clearFrame();
+        uint8_t lvl = 255 - (255 - DIM) * s / 6;
+        for (uint8_t k = 0; k < oldSet.n; k++) setCell(oldSet.idx[k], scaled(timeCellColor(oldSet.idx[k]), lvl));
+        showFrame(35);
+    }
     int ix = -2, iy = 0;
+    int bombR = -1, bombC = 0;                                // one shot in flight, -1 = none
+    int16_t flash = -1;                                       // letter just hit, shown white for a frame
     for (uint8_t step = 0; step < 22; step++) {
         ix = (step < 8) ? ix + 1 : (step < 16 ? ix - 1 : ix + 1);
         if (step == 8 || step == 16) iy++;
         const char* const* frm = (step & 1) ? INVADER_B : INVADER_A;
-        clearFrame();
-        for (uint8_t k = 0; k < oldSet.n; k++) if (remain[oldSet.idx[k]]) setCell(oldSet.idx[k], timeCellColor(oldSet.idx[k]));
-        drawSprite(frm, 11, 8, iy, ix, SI_GREEN);
-        showFrame(220);
-        if (step % 2 == 0) {           // fire straight down from a random gun column
-            uint8_t gc = constrain(ix + 1 + (int)random(0, 9), 0, GRID_N - 1);
-            for (int r = iy + 8; r < GRID_N; r++) {
-                uint16_t cell = r * GRID_N + gc;
-                if (remain[cell]) { remain[cell] = false; setCell(cell, CRGB::White); }
-                setCell(cell, colAccent());
-                showFrame(22);
-            }
+        if (step % 2 == 0 && bombR < 0) {                     // fire from a random gun column
+            bombC = constrain(ix + 1 + (int)random(0, 9), 0, GRID_N - 1);
+            bombR = iy + 8;
         }
+        for (uint8_t sub = 0; sub < 4; sub++) {               // bomb falls a row per sub-frame
+            clearFrame();
+            for (uint8_t k = 0; k < oldSet.n; k++)
+                if (remain[oldSet.idx[k]]) setCell(oldSet.idx[k], scaled(timeCellColor(oldSet.idx[k]), DIM));
+            if (flash >= 0) { setCell(flash, CRGB::White); flash = -1; }
+            drawSprite(frm, 11, 8, iy, ix, SI_GREEN);
+            if (bombR >= GRID_N) bombR = -1;
+            if (bombR >= 0) {
+                uint16_t cell = bombR * GRID_N + bombC;
+                if (remain[cell]) {                           // hit: letter flashes and is gone
+                    remain[cell] = false;
+                    setCell(cell, CRGB::White);
+                    flash = cell;
+                    bombR = -1;
+                } else {
+                    setCell(cell, colAccent());
+                    if (bombR > iy + 8) setCell(cell - GRID_N, scaled(colAccent(), 70));
+                    bombR++;
+                }
+            }
+            showFrame(55);
+        }
+    }
+    for (uint8_t s = 1; s <= 6; s++) {                         // survivors fade out, then the new time fades in
+        clearFrame();
+        uint8_t lvl = DIM - DIM * s / 6;
+        for (uint8_t k = 0; k < oldSet.n; k++)
+            if (remain[oldSet.idx[k]]) setCell(oldSet.idx[k], scaled(timeCellColor(oldSet.idx[k]), lvl));
+        showFrame(35);
     }
     animFade(CellSet(), newSet);
 }
