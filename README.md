@@ -216,7 +216,8 @@ point `TIME-INVADERS` (password `insertcoin`); join it and open
 Until it has the time it displays INSERT COIN in amber.
 
 **Networks:** it remembers up to 5 WiFi networks (e.g. home + a phone
-hotspot), most recently added first. If it isn't on one, it keeps
+hotspot). At boot it scans and tries the first saved network in range,
+most recently joined first. If it isn't on one, it keeps
 retrying them all in the background, pausing while someone is on the
 portal. The `TIME-INVADERS` portal comes up whenever it has been off
 WiFi for 20 s, and goes away a minute after it rejoins (once no one is

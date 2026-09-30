@@ -125,6 +125,27 @@ static void apStop() {
     Serial.println("[net] portal down");
 }
 
+// Last network actually joined goes to the front, so it's tried first next time.
+static void promote(const String& ssid) {
+    for (uint8_t i = 1; i < netCount; i++)
+        if (netSsid[i] == ssid) { String pass = netPass[i]; netSaveCreds(ssid, pass); return; }
+}
+
+// Boot shortcut: try the first saved network that is actually in range, so a
+// switched-off (or 5 GHz) hotspot doesn't cost 15 s and a portal flash every
+// boot. A failed scan falls back to the top of the list; hidden SSIDs are
+// still picked up by the background cycle.
+static int8_t pickVisible() {
+    int n = WiFi.scanNetworks();
+    int8_t pick = n < 0 ? 0 : -1;
+    for (uint8_t i = 0; i < netCount && pick < 0; i++)
+        for (int k = 0; k < n; k++)
+            if (WiFi.SSID(k) == netSsid[i]) { pick = i; break; }
+    WiFi.scanDelete();
+    Serial.printf("[net] boot scan: %d visible, trying #%d\n", n, pick);
+    return pick;
+}
+
 static void startTry(uint8_t i) {
     tryIdx = i;
     tryStarted = millis();
@@ -141,8 +162,9 @@ void netSetup() {
     WiFi.setAutoReconnect(false);   // netLoop owns reconnection
     WiFi.setHostname(cfg.hostname);
     WiFi.mode(WIFI_STA);
-    if (netCount) {
-        startTry(0);
+    int8_t pick = netCount ? pickVisible() : -1;
+    if (pick >= 0) {
+        startTry(pick);
         while (WiFi.status() != WL_CONNECTED && millis() - tryStarted < TRY_MS) {
             delay(250);
             Serial.print('.');
@@ -154,6 +176,7 @@ void netSetup() {
         staUpSince = millis();
         tryIdx = -1;
         Serial.printf("[net] STA %s on %s\n", WiFi.localIP().toString().c_str(), WiFi.SSID().c_str());
+        promote(WiFi.SSID());
         netApplyTz();               // restart SNTP now the uplink exists
     } else {
         WiFi.disconnect();
@@ -182,6 +205,7 @@ void netLoop() {
         staUpSince = now;
         tryIdx = -1;
         Serial.printf("[net] STA %s on %s\n", WiFi.localIP().toString().c_str(), WiFi.SSID().c_str());
+        promote(WiFi.SSID());
         netApplyTz();               // sync now instead of waiting out SNTP's backoff
     } else if (!up && staWasUp) {
         staWasUp = false;
