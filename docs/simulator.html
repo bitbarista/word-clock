@@ -538,7 +538,7 @@ function refreshTimeWords(){
    ===================================================================== */
 async function animFade(oldSet, newSet){
   for(let step=0; step<=16; step++){
-    const up=step*16, down=255-up;
+    const up=Math.min(255,step*16), down=255-up;
     clearFrame();
     for(const c of oldSet) if(!newSet.has(c)) setCell(c, scaled(timeCellColor(c),down));
     for(const c of newSet) setCell(c, oldSet.has(c) ? timeCellColor(c) : scaled(timeCellColor(c),up));
