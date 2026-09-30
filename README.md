@@ -215,10 +215,19 @@ point `TIME-INVADERS` (password `insertcoin`); join it and open
 `http://192.168.4.1`. Once on your WiFi it's `http://timeinvaders.local`.
 Until it has the time it displays INSERT COIN in amber.
 
+**Networks:** it remembers up to 5 WiFi networks (e.g. home + a phone
+hotspot), most recently added first. If it isn't on one, it keeps
+retrying them all in the background, pausing while someone is on the
+portal. The `TIME-INVADERS` portal comes up whenever it has been off
+WiFi for 20 s, and goes away a minute after it rejoins (once no one is
+on it).
+
 Features (all from the mobile web UI):
 - **Time**: NTP with POSIX timezones (auto DST) when online; runs
-  from the internal clock without WiFi; one-tap "sync from this
-  device" in AP mode; last-known time restored after power loss
+  from the internal clock without WiFi; with no recent internet
+  time, opening the web UI sets the clock from the browser's time
+  (plus a manual "sync from this device" button); timezone applies
+  with or without WiFi; last-known time restored after power loss
   (approximate until re-synced).
 - **Per-minute word clock** with quick crossfades on minute ticks and
   a big arcade transition on 5-minute changes: Pac-Man eats the time,

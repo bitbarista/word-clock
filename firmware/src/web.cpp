@@ -38,9 +38,13 @@ static void handleStatus(AsyncWebServerRequest* req) {
     doc["time"]    = timeValid() ? hm : "--:--";
     doc["phrase"]  = currentPhrase();
     doc["hasTime"] = timeValid();
+    doc["epoch"]   = (uint32_t)t;
+    doc["ntpAge"]  = netNtpAgeS();
     doc["ip"]      = netIP();
     doc["ap"]      = netIsAP();
-    doc["rssi"]    = netIsAP() ? 0 : WiFi.RSSI();
+    doc["sta"]     = netIsSta();
+    doc["ssid"]    = netIsSta() ? WiFi.SSID() : String();
+    doc["rssi"]    = netIsSta() ? WiFi.RSSI() : 0;
     doc["host"]    = cfg.hostname;
     doc["fw"]      = FW_VERSION;
     doc["usbLimited"] = usbPowerLimited();
@@ -189,6 +193,19 @@ void webSetup() {
             g_reboot = true;
         }));
 
+    server.on("/api/networks", HTTP_GET, [](AsyncWebServerRequest* req) {
+        JsonDocument doc;
+        JsonArray arr = doc["saved"].to<JsonArray>();
+        for (uint8_t i = 0; i < netSavedCount(); i++) arr.add(netSavedSsid(i));
+        sendJson(req, doc);
+    });
+
+    server.on("/api/forget", HTTP_POST, [](AsyncWebServerRequest*) {}, nullptr,
+        jsonBody([](AsyncWebServerRequest* req, JsonDocument& doc) {
+            netForget(doc["ssid"] | "");
+            req->send(200, "application/json", "{\"ok\":true}");
+        }));
+
     server.on("/api/restart", HTTP_POST, [](AsyncWebServerRequest* req) {
         req->send(200, "application/json", "{\"ok\":true}");
         g_reboot = true;
@@ -207,9 +224,9 @@ void webSetup() {
             if (final) Update.end(true);
         });
 
-    // captive portal convenience in AP mode
+    // captive portal: anything unknown asked over the portal lands on the UI
     server.onNotFound([](AsyncWebServerRequest* req) {
-        if (netIsAP()) req->redirect("/");
+        if (netIsAP() && req->client()->localIP() == WiFi.softAPIP()) req->redirect("/");
         else req->send(404, "text/plain", "not found");
     });
 

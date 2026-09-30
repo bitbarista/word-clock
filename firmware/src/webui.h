@@ -148,7 +148,7 @@ font-size:13px;text-align:center;padding:8px 14px}
     </select></div>
   <div class="row" id="tzcustomrow" style="display:none"><label class="hint">POSIX TZ</label>
     <input type="text" id="tz" style="flex:2"></div>
-  <div class="hint">Time syncs from the internet automatically when WiFi is up.</div>
+  <div class="hint">Time syncs from the internet whenever the clock is on WiFi. Without internet time, opening this page sets the clock from your device.</div>
   <div class="btns"><button class="acc" onclick="syncTime()">&#8986; Sync time from this device</button></div>
 </div>
 
@@ -156,9 +156,11 @@ font-size:13px;text-align:center;padding:8px 14px}
   <div class="hint" id="netinfo"></div>
   <div class="btns"><button onclick="scan()">&#128246; Scan networks</button></div>
   <div class="nets" id="nets"></div>
+  <div class="hint">Saved networks (tried in turn, most recent first):</div>
+  <div class="nets" id="saved"></div>
   <div class="row"><input type="text" id="ssid" placeholder="SSID" style="flex:1">
     <input type="password" id="pass" placeholder="password" style="flex:1"></div>
-  <div class="btns"><button class="acc" onclick="joinWifi()">Join &amp; reboot</button></div>
+  <div class="btns"><button class="acc" onclick="joinWifi()">Save, join &amp; reboot</button></div>
 </div>
 
 <div class="card"><h2>Panel</h2>
@@ -261,6 +263,11 @@ if(v!=='custom'){$('tz').value=v;saveCfg({tz:v});}});
 $('tz').addEventListener('change',e=>saveCfg({tz:e.target.value}));
 
 function syncTime(){post('/api/time',{epoch:Math.floor(Date.now()/1000)});}
+// no recent internet time and the clock disagrees with this device: fix it silently
+let lastAuto=0;
+function autoSync(s){const fresh=s.ntpAge>=0&&s.ntpAge<86400;
+if(!fresh&&Math.abs(Date.now()/1000-s.epoch)>2&&Date.now()-lastAuto>60000){
+lastAuto=Date.now();syncTime();}}
 
 async function scan(){$('nets').innerHTML='<span class="hint">scanning…</span>';
 for(let i=0;i<10;i++){const r=await(await fetch('/api/scan')).json();
@@ -270,7 +277,12 @@ b.innerHTML=`<span>${n.ssid}</span><span class="hint">${n.rssi} dBm</span>`;
 b.onclick=()=>$('ssid').value=n.ssid;$('nets').appendChild(b);});return;}
 await new Promise(res=>setTimeout(res,1200));}}
 function joinWifi(){post('/api/wifi',{ssid:$('ssid').value,pass:$('pass').value});
-alert('Joining new network — the clock will reboot.');}
+alert('Saved — the clock will reboot and join it. It remembers up to 5 networks.');}
+async function loadSaved(){try{const r=await(await fetch('/api/networks')).json();
+$('saved').innerHTML=r.saved.length?'':'<span class="hint">none</span>';
+r.saved.forEach(n=>{const b=document.createElement('button');
+b.innerHTML=`<span></span><span class="hint">forget &#10005;</span>`;b.firstChild.textContent=n;
+b.onclick=()=>{post('/api/forget',{ssid:n});b.remove();};$('saved').appendChild(b);});}catch(e){}}
 
 function doOta(){const f=$('fwfile').files[0];if(!f)return alert('Choose a .bin first');
 const xhr=new XMLHttpRequest();xhr.open('POST','/update');
@@ -293,12 +305,14 @@ ctx.fillText(GRID[r][c],c*10+5,r*10+5.5);}}catch(e){}}
 async function status(){try{const s=await(await fetch('/api/status')).json();
 $('hstat').textContent=`${s.time} · ${s.ip}`;
 $('phrase').textContent=s.phrase;
-$('netinfo').innerHTML=s.ap?'<span class="warn">Access-point mode — join a WiFi below for auto time.</span>'
-:`Connected · ${s.ip} · ${s.rssi} dBm`;
+const nt=s.ntpAge<0?'no internet time yet':`internet time ${Math.round(s.ntpAge/60)} min ago`;
+$('netinfo').innerHTML=s.sta?`Connected to ${s.ssid} · ${s.ip} · ${s.rssi} dBm · ${nt}`
+:'<span class="warn">Not on WiFi — portal only. Still retrying saved networks in the background.</span>';
+autoSync(s);
 $('fwline').textContent=`Firmware v${s.fw} · ${s.host}.local`;
 $('usbbanner').style.display=s.usbLimited?'block':'none';}catch(e){}}
 setInterval(preview,1000);setInterval(status,3000);
-loadCfg();status();preview();
+loadCfg();loadSaved();status();preview();
 </script>
 </body></html>
 )HTML";
