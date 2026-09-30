@@ -477,21 +477,49 @@ void animHiddenWord(uint8_t which) {
     }
 }
 
-void animBoot() {
-    CellSet coin; hiddenCells(0, coin);
-    for (uint8_t f = 0; f < 2; f++) {
-        for (uint8_t s = 0; s <= 10; s++) { clearFrame(); fillCells(coin, scaled(colAccent(), s * 25)); showFrame(30); }
-        for (uint8_t s = 10; s > 0; s--)  { clearFrame(); fillCells(coin, scaled(colAccent(), s * 25)); showFrame(30); }
-    }
-    if (timeValid()) {                                      // a ghost haunts the boot
-        drawGhost14(GHOST_RED); showFrame(1000);
-        for (uint8_t f = 0; f < 2; f++) {
-            drawGhost14(CRGB(0x3B, 0x5B, 0xFF)); showFrame(280);
-            drawGhost14(CRGB(0xE8, 0xEC, 0xFF)); showFrame(200);
+// Boot logo: the web UI's favicon ghost filling the panel, with clock-face
+// eyes whose hands sweep round before settling. Same art as icons/favicon-16.
+static const char* const LOGO16[16] = {
+    "................", ".....BBBBBB.....", "...BBBBBBBBBB...", "..BHBBBBBBBBBB..",
+    "..BWWWWBBWWWWB..", ".BBWWWWBBWWWWBB.", ".BBWWWWBBWWWWBB.", ".BBWWWWBBWWWWBB.",
+    ".BBBBBBBBBBBBBB.", ".BBBBBBBBBBBBBB.", ".BBBBBBBBBBBBBB.", ".BBBBBBBBBBBBBB.",
+    ".BBBBBBBBBBBBBB.", ".BBBBBBBBBBBBBB.", ".BB.BBB..BBB.BB.", "................"
+};
+static const uint8_t LOGO_EYE_R = 4, LOGO_EYE_C[2] = {3, 9};    // top-left of each 4x4 eye
+static const int8_t LOGO_V[4][2] = {{1, 0}, {1, 3}, {2, 1}, {2, 2}};   // resting "V" hands
+// sweep: a rim cell plus the centre cell next to it, clockwise from 12
+static const int8_t LOGO_RIM[8][2]  = {{0,1},{0,2},{1,3},{2,3},{3,2},{3,1},{2,0},{1,0}};
+static const int8_t LOGO_HUB[8][2]  = {{1,1},{1,2},{1,2},{2,2},{2,2},{2,1},{2,1},{1,1}};
+
+static void drawLogo(uint8_t lvl, const int8_t (*hands)[2], uint8_t nHands) {
+    clearFrame();
+    for (uint8_t r = 0; r < GRID_N; r++)
+        for (uint8_t c = 0; c < GRID_N; c++) {
+            char ch = LOGO16[r][c];
+            if (ch == '.') continue;
+            CRGB col = ch == 'B' ? CRGB(0x03, 0xDD, 0xF7) : ch == 'H' ? CRGB(0x8A, 0xEE, 0xFB) : CRGB(0xFA, 0xF9, 0xFB);
+            setCell(r * GRID_N + c, scaled(col, lvl));
         }
+    for (uint8_t e = 0; e < 2; e++)
+        for (uint8_t k = 0; k < nHands; k++)
+            setCell((LOGO_EYE_R + hands[k][0]) * GRID_N + LOGO_EYE_C[e] + hands[k][1],
+                    scaled(CRGB(0xFB, 0xC6, 0x0A), lvl));
+}
+
+void animBoot() {
+    for (uint8_t s = 1; s <= 8; s++) { drawLogo(s * 255 / 8, LOGO_V, 4); showFrame(40); }
+    showFrame(300);
+    for (uint8_t t = 0; t < 16; t++) {                      // hands sweep round twice
+        int8_t h[2][2] = {{LOGO_HUB[t % 8][0], LOGO_HUB[t % 8][1]}, {LOGO_RIM[t % 8][0], LOGO_RIM[t % 8][1]}};
+        drawLogo(255, h, 2);
+        showFrame(90);
+    }
+    drawLogo(255, LOGO_V, 4); showFrame(800);
+    for (uint8_t s = 8; s > 0; s--) { drawLogo((s - 1) * 255 / 8, LOGO_V, 4); showFrame(40); }
+    if (timeValid()) {
         CellSet now; getNowCells(now);
         animFade(CellSet(), now);
-    }
+    }                                                       // else the base frame shows INSERT COIN
 }
 
 void animMapTest() {
