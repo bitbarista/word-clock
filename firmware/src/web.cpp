@@ -11,6 +11,8 @@
 
 static AsyncWebServer server(80);
 volatile bool g_reboot = false;
+static volatile bool seenClient = false;
+bool webSeenClient() { return seenClient; }
 
 static String colHex(uint32_t v) {
     char b[8];
@@ -29,6 +31,7 @@ static void sendJson(AsyncWebServerRequest* req, JsonDocument& doc) {
 }
 
 static void handleStatus(AsyncWebServerRequest* req) {
+    seenClient = true;
     JsonDocument doc;
     time_t t = time(nullptr);
     struct tm tmv;

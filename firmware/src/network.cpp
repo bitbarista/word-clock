@@ -135,7 +135,8 @@ static void startTry(uint8_t i) {
 void netSetup() {
     loadNets();
     sntp_set_time_sync_notification_cb(onNtpSync);
-    netApplyTz();                   // local time must be right even with no WiFi
+    setenv("TZ", cfg.tz, 1);        // local time must be right even with no WiFi;
+    tzset();                        // SNTP itself starts once a network is joined
     WiFi.persistent(false);         // background retries must not rewrite flash
     WiFi.setAutoReconnect(false);   // netLoop owns reconnection
     WiFi.setHostname(cfg.hostname);
