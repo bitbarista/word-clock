@@ -984,7 +984,13 @@ async function tick(){
     const rq=reqKind, param=reqParam; reqKind=null; reqParam=-1;
     busy=true;
     const cur = nowCells;
-    if(rq==='transition'){ refreshTimeWords(); await doTransition(param<0?cfg.transStyle:param, cur, nowCells); }
+    if(rq==='transition'){
+      refreshTimeWords();
+      const style = param<0 ? cfg.transStyle : param;
+      // a preview goes from the current time to itself, so a crossfade would show nothing
+      if(style===TR_FADE){ await animFade(cur, new Set()); await animFade(new Set(), nowCells); }
+      else await doTransition(style, cur, nowCells);
+    }
     else if(rq==='attract'){ await animAttract(param<0?AT_RANDOM:param); }
     else if(rq==='words'){ await animHiddenWord(param<0?rnd(0,HIDDEN.length):param); }
     else if(rq==='maptest'){ await animMapTest(); }
